@@ -393,41 +393,37 @@ class DemographicModel(object):
         msfs_list = []
 
         printstr = " Performing Simulations    | {} |"
-        for i in range(nsims):
+        for i in range(nsims+1):
             start = time.time()
             try:
-                for i in range(nsims):
-                    elapsed = datetime.timedelta(seconds=int(time.time()-start))
-                    if not quiet: progressbar(nsims, i, printstr.format(elapsed))
+                elapsed = datetime.timedelta(seconds=int(time.time()-start))
+                if not quiet: progressbar(nsims, i, printstr.format(elapsed))
 
-                    zeta = self._sample_zeta()
-                    psi, pops_per_tau = self.get_pops_per_tau(zeta)
-                    if verbose: print(zeta, psi, pops_per_tau)
-                    taus = self._sample_tau(ntaus=len(pops_per_tau))
-                    epsilons = self._sample_epsilon(len(pops_per_tau))
-                    param_df.loc[i] = [zeta, psi, pops_per_tau, taus, epsilons]
-                    sfs_list = []
-                    #import pdb; pdb.set_trace()
-                    for tidx, tau_pops in enumerate(pops_per_tau):
-                        for pidx in range(tau_pops):
-                            name = "pop{}-{}".format(tidx, pidx)
-                            sfs_list.append(self.get_sfs(name,
-                                                    N_e=self._sample_Ne(),
-                                                    tau=taus[tidx],
-                                                    epsilon=epsilons[tidx]))
-                    msfs = multiSFS(sfs_list)
-                    msfs_list.append(msfs)
+                zeta = self._sample_zeta()
+                psi, pops_per_tau = self.get_pops_per_tau(zeta)
+                if verbose: print(zeta, psi, pops_per_tau)
+                taus = self._sample_tau(ntaus=len(pops_per_tau))
+                epsilons = self._sample_epsilon(len(pops_per_tau))
+                param_df.loc[i] = [zeta, psi, pops_per_tau, taus, epsilons]
+                sfs_list = []
+                for tidx, tau_pops in enumerate(pops_per_tau):
+                    for pidx in range(tau_pops):
+                        name = "pop{}-{}".format(tidx, pidx)
+                        sfs_list.append(self.get_sfs(name,
+                                                N_e=self._sample_Ne(),
+                                                tau=taus[tidx],
+                                                epsilon=epsilons[tidx]))
+                msfs = multiSFS(sfs_list)
+                msfs_list.append(msfs)
 
-                    LOGGER.debug("Finished simulation {} time: {}:\n{}".format(i, elapsed))
             except KeyboardInterrupt as inst:
                 print("\n    Cancelling remaining simulations")
+                break
             except Exception as inst:
                 raise PTAError("Simulation failed: {}".format(inst))
 
-            if not quiet: progressbar(100, 100, " Finished {} simulations in {}\n".format(i, elapsed))
+        if not quiet: progressbar(100, 100, " Finished {} simulations in   {}\n".format(i, elapsed))
 
-            msfs = multiSFS(sfs_list)
-            msfs_list.append(msfs)
         return param_df, msfs_list
 
 
@@ -483,13 +479,13 @@ class DemographicModel(object):
         ## Decide whether to print the header, if stuff is already in there then
         ## don't print the header, unless you're doing force because this opens
         ## in overwrite mode.
-        header = "watdo"
+        header = "watdo\n"
 
         LOGGER.debug("SIMOUT header - {}".format(header))
         if os.path.exists(simfile) and not force:
             header = ""
-        SIMOUT = open(simfile, io_mode)
-        SIMOUT.write(header)
+        with open(simfile, io_mode) as outfile:
+            outfile.write(header)
 
         if ipyclient:
             param_df, msfs_list = self.do_parallel_sims(ipyclient, nsims=nsims, quiet=quiet, verbose=verbose)
@@ -497,12 +493,13 @@ class DemographicModel(object):
             # Run simulations serially
             param_df, msfs_list = self.do_serial_sims(nsims=nsims, quiet=quiet, verbose=verbose)
     
-        with open(outfile, io_mode) as simfile:
+        with open(simfile, io_mode) as outfile:
             for row, msfs in zip(param_df.iterrows(), msfs_list):
                 try:
-                    simfile.write(" ".join(map(str, r[1][["zeta", "psi"]].tolist())) + " " + msfs.to_string() + "\n")
+                    outfile.write(" ".join(map(str, row[1][["zeta", "psi"]].tolist())) + " " + msfs.to_string() + "\n")
                 except Exception as inst:
-                    print("Failed: {}\n{}".format(row, msfs))
+                    print("Simulation failed. See pta_log.txt.")
+                    LOGGER.error("Failed simulations: {}\n{}\n{}".format(inst, row, msfs))
 
 
 #############################

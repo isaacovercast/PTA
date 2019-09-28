@@ -300,12 +300,10 @@ def main():
                     with open(PTA.__debugfile__, 'w') as clear:
                         clear.write("file reset")
 
-            if not args.quiet:
-                print("\n    {}".format(data))
+            #if not args.quiet:
+            #    print("\n    {}".format(data))
 
             try:
-                if not args.quiet: print("    Generating {} simulation(s).".format(args.sims))
-
                 do_sims(data, args)
             except Exception as inst:
                 print("  Unexpected error - {}".format(inst))
@@ -319,7 +317,7 @@ BAD_PARAMETER_ERROR = """
 PTA_HEADER = \
 "\n -------------------------------------------------------------"+\
 "\n  PTA [v.{}]".format(PTA.__version__)+\
-"\n  Massive Eco-Evolutionary Synthesis Simulations"+\
+"\n  Phylogeographic Temporal Analysis"+\
 "\n -------------------------------------------------------------"
 
 

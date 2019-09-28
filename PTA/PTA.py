@@ -1,5 +1,6 @@
 import datetime
 import logging
+import momi
 import numpy as np
 import os
 import string
@@ -8,30 +9,25 @@ import tempfile
 
 from collections import OrderedDict
 
-from .stats import *
+import PTA
 from .util import *
+from .msfs import *
 
 LOGGER = logging.getLogger(__name__)
 
-class PTA(object):
+class DemographicModel(object):
     """
     The PTA object
 
     :param str name: The name of this PTA simulation. This is used for
         creating output files.
-    :param bool quiet: Whether to print progress of simulations or remain silent.
-    :param bool log_files: For each community assembly simulation create a
-        a directory in the `outdir`, write the exact parameters for the simulation,
-        and dump the megalog to a file. The megalog includes all information
-        about the final state of the local community, prior to calculating
-        summary statistics per species. Primarily for debugging purposes.
+    :param bool quiet: Don't print anything ever.
+    :param bool verbose: Print more progress info.
     """
 
-    def __init__(self, name, verbose=False):
+    def __init__(self, name, quiet=False, verbose=False):
         if not name:
             raise PTAError(REQUIRE_NAME)
-
-        self._log_files = log_files
 
         ## Do some checking here to make sure the name doesn't have
         ## special characters, spaces, or path delimiters. Allow _ and -.
@@ -91,7 +87,7 @@ class PTA(object):
     ## Housekeeping functions
     #########################
     def __str__(self):
-        return "<PTA.Region {}: {}>".format(self.paramsdict["simulation_name"], list(self.islands.keys()))
+        return "<PTA.DemographicModel: {}>".format(self.paramsdict["simulation_name"])
 
 
     ## Test assembly name is valid and raise if it contains any special characters
@@ -119,11 +115,6 @@ class PTA(object):
                               + str(np.random.randint(100)))
         if not os.path.exists(outdir):
             os.mkdir(outdir)
-
-        ## Push the outdir into each of the local communities.
-        for name, island in self.islands.items():
-            island._hackersonly["outdir"] = outdir
-            self.islands[name] = island
 
         return outdir
 
@@ -158,7 +149,9 @@ class PTA(object):
                 else:
                     self.paramsdict[param] = tup
 
-            elif param in ["npops", "nsamsp", "length", "num_replicates", "recoms_per_gen", "muts_per_gen"]:
+            elif param in ["npops", "nsamsp", "length", "num_replicates"]:
+                self.paramsdict[param] = int(newvalue)
+            elif param in ["recoms_per_gen", "muts_per_gen"]:
                 self.paramsdict[param] = float(newvalue)
             else:
                 self.paramsdict[param] = newvalue
@@ -193,14 +186,7 @@ class PTA(object):
         try:
             self = set_params(self, param, value, quiet)
         except:
-            try:
-                self.metacommunity = set_params(self.metacommunity, param, value, quiet)
-            except:
-                try:
-                    name, loc = list(self.islands.items())[0]
-                    self.islands[name] = set_params(loc, param, value, quiet)
-                except:
-                    raise PTAError("Bad param/value {}/{}".format(param, value))
+            raise PTAError("Bad param/value {}/{}".format(param, value))
 
 
     def get_params(self):
@@ -265,20 +251,13 @@ class PTA(object):
                 ## the sampled value
                 if full:
                     if key in list(self._priors.keys()):
-                        ## The prior on community assembly model is a little goofy
-                        ## since it's a list, and not a search range
-                        if key == "community_assembly_model" and self._priors[key]:
-                            paramvalue = "*"
-                        elif self._priors[key]:
-                            paramvalue = "-".join([str(i) for i in self._priors[key]])
+                        paramvalue = "-".join([str(i) for i in self._priors[key]])
 
                 padding = (" "*(20-len(paramvalue)))
                 paramkey = list(self.paramsdict.keys()).index(key)
                 paramindex = " ## [{}] ".format(paramkey)
                 LOGGER.debug("{} {} {}".format(key, val, paramindex))
-                #name = "[{}]: ".format(paramname(paramkey))
                 name = "[{}]: ".format(key)
-                #description = paraminfo(paramkey, short=True)
                 description = PARAMS[key]
                 paramsfile.write("\n" + paramvalue + padding + \
                                         paramindex + name + description)
@@ -289,22 +268,32 @@ class PTA(object):
     ########################
     ## Model functions/API
     ########################
-    def sample_tau(ntaus=1):
-        return np.random.randint(1000, 50000, npops)
+    def _sample_tau(self, ntaus=1):
+        return np.random.randint(1000, 50000, ntaus)
 
 
-    def sample_epsilon(npops=1):
-        return np.random.randint(1, 20, npops)
+    def _sample_epsilon(self, ntaus=1):
+        return np.random.randint(1, 20, ntaus)
 
 
-    def sample_zeta():
+    def _sample_zeta(self):
         return np.random.uniform()
 
 
-    def get_pops_per_tau(npops, zeta):
+    def _sample_Ne(self):
+        N_e = 0
+        if isinstance(self.paramsdict["N_e"], tuple):
+            min_Ne, max_Ne = self.paramsdict["N_e"]
+            N_e = np.random.randint(min_Ne, max_Ne+1)
+        else:
+            N_e = self.paramsdict["N_e"]
+        return N_e
+
+
+    def get_pops_per_tau(self, zeta):
 
         # Get effective # of coexpanding taxa
-        n_sync = int(np.round(zeta * npops))
+        n_sync = int(np.round(zeta * self.paramsdict["npops"]))
     
         # There needs to be at least 1 coexpansion event and coexpansion events must
         # include at least 2 taxa
@@ -314,7 +303,7 @@ class PTA(object):
             except ValueError:
                 # If n_sync + 1 / 2 = 1 then psi = 1
                 psi = 1
-            n_async = npops - n_sync
+            n_async = self.paramsdict["npops"] - n_sync
     
             # Have to allocate all pops to a table in the restaurant
             # Each table has to have at least 2 customers or its not a real table
@@ -330,13 +319,14 @@ class PTA(object):
             # If no coexpansion events then everyone gets their own table
             psi = 0
             n_sync = 0
-            n_async = npops
-            pops_per_tau = np.array([1] * npops)
+            n_async = self.paramsdict["npops"]
+            pops_per_tau = np.array([1] * self.paramsdict["npops"])
     
         return psi, pops_per_tau.astype(int)
 
     
-    def do_parallel_sims(ipyclient, nsims=1, npops=10, verbose=False):
+    def do_parallel_sims(self, ipyclient, nsims=1, quiet=False, verbose=False):
+        npops = self.paramsdict["npops"]
         parallel_jobs = {}
         _ipcluster = {}
         ## store ipyclient engine pids to the Assembly so we can
@@ -352,16 +342,16 @@ class PTA(object):
     
         lbview = ipyclient.load_balanced_view()
         for i in range(nsims):
-            parallel_jobs[i] = lbview.apply(do_serial_sims, 5, npops, verbose)
+            parallel_jobs[i] = lbview.apply(do_serial_sims, 5, verbose)
     
         ## Wait for all jobs to finish
         start = time.time()
+        printstr = " Performing Simulations    | {} |"
         while 1:
             try:
                 fin = [i.ready() for i in parallel_jobs.values()]
                 elapsed = datetime.timedelta(seconds=int(time.time()-start))
-                #if not quiet: progressbar(len(fin), sum(fin),
-                #    printstr.format(elapsed))
+                if not quiet: progressbar(len(fin), sum(fin), printstr.format(elapsed))
                 time.sleep(0.1)
                 if len(fin) == sum(fin):
                     print("")
@@ -369,7 +359,7 @@ class PTA(object):
             except KeyboardInterrupt as inst:
                 print("\n    Cancelling remaining simulations.")
                 break
-        #if not quiet: progressbar(100, 100, "\n    Finished {} simulations\n".format(len(fin)))
+        if not quiet: progressbar(100, 100, "\n    Finished {} simulations\n".format(len(fin)))
         if verbose: print("Done w/ sims")
         
         faildict = {}
@@ -390,293 +380,129 @@ class PTA(object):
                 LOGGER.error("Caught a failed simulation - {}".format(inst))
                 ## Don't let one bad apple spoin the bunch,
                 ## so keep trying through the rest of the asyncs
-        print(faildict)
+        LOGGER.debug(faildict)
+
         return param_df, msfs_list
     
     
-    def do_serial_sims(nsims=nsims, npops=npops, verbose=False):
+    def do_serial_sims(self, nsims=1, quiet=False, verbose=False):
         import pandas as pd
+        npops = self.paramsdict["npops"]
     
         param_df = pd.DataFrame([], columns=["zeta", "psi", "pops_per_tau", "taus", "epsilons"])
         msfs_list = []
+
+        printstr = " Performing Simulations    | {} |"
         for i in range(nsims):
-            print("sim {}".format(i))
-            zeta = sample_zeta()
-            psi, pops_per_tau = get_pops_per_tau(npops, zeta)
-            if verbose: print(zeta, psi, pops_per_tau)
-            taus = sample_tau(ntaus=len(pops_per_tau))
-            epsilons = sample_exp_magnitude(len(pops_per_tau))
-            param_df.loc[i] = [zeta, psi, pops_per_tau, taus, epsilons]
-            sfs_list = []
-            for tidx, tau_pops in enumerate(pops_per_tau):
-                for pidx in range(tau_pops):
-                    name = "pop{}-{}".format(tidx, pidx)
-                    sfs_list.append(get_sfs(name,
-                                            t=taus[tidx],
-                                            exp_magnitude=epsilons[tidx]))
+            start = time.time()
+            try:
+                for i in range(nsims):
+                    elapsed = datetime.timedelta(seconds=int(time.time()-start))
+                    if not quiet: progressbar(nsims, i, printstr.format(elapsed))
+
+                    zeta = self._sample_zeta()
+                    psi, pops_per_tau = self.get_pops_per_tau(zeta)
+                    if verbose: print(zeta, psi, pops_per_tau)
+                    taus = self._sample_tau(ntaus=len(pops_per_tau))
+                    epsilons = self._sample_epsilon(len(pops_per_tau))
+                    param_df.loc[i] = [zeta, psi, pops_per_tau, taus, epsilons]
+                    sfs_list = []
+                    #import pdb; pdb.set_trace()
+                    for tidx, tau_pops in enumerate(pops_per_tau):
+                        for pidx in range(tau_pops):
+                            name = "pop{}-{}".format(tidx, pidx)
+                            sfs_list.append(self.get_sfs(name,
+                                                    N_e=self._sample_Ne(),
+                                                    tau=taus[tidx],
+                                                    epsilon=epsilons[tidx]))
+                    msfs = multiSFS(sfs_list)
+                    msfs_list.append(msfs)
+
+                    LOGGER.debug("Finished simulation {} time: {}:\n{}".format(i, elapsed))
+            except KeyboardInterrupt as inst:
+                print("\n    Cancelling remaining simulations")
+            except Exception as inst:
+                raise PTAError("Simulation failed: {}".format(inst))
+
+            if not quiet: progressbar(100, 100, " Finished {} simulations in {}\n".format(i, elapsed))
+
             msfs = multiSFS(sfs_list)
             msfs_list.append(msfs)
         return param_df, msfs_list
+
+
+    def get_sfs(self, name, N_e=1e6, tau=20000, epsilon=10, verbose=False):
+        model = momi.DemographicModel(N_e=N_e)
+        model.add_leaf(name)
+        model.set_size(name, t=tau, N=N_e/epsilon)
+        sampled_n_dict={name:4}
+        if verbose: print(sampled_n_dict)
+        ac = model.simulate_data(length=self.paramsdict["length"],
+                                num_replicates=self.paramsdict["num_replicates"],
+                                recoms_per_gen=self.paramsdict["recoms_per_gen"],
+                                muts_per_gen=self.paramsdict["muts_per_gen"],
+                                sampled_n_dict=sampled_n_dict)
+        return ac.extract_sfs(n_blocks=1)
+
     
-    
-    def run(nsims=1, ipyclient=None, verbose=False):
-        param_df = pd.DataFrame([], columns=["zeta", "psi", "pops_per_tau", "taus", "epsilons"])
-
-        if not quiet: print("    Generating {} simulation(s).".format(sims))
-
-        if not os.path.exists(self.paramsdict["project_dir"]):
-            os.mkdir(self.paramsdict["project_dir"])
-
-        simout = os.path.join(self.paramsdict["project_dir"], "SIMOUT.txt")    
-
-        if ipyclient:
-            param_df, msfs_list = do_parallel_sims(ipyclient, nsims=nsims, npops=self.params.npops, verbose=verbose)
-        else:
-            # Run simulations serially
-            param_df, msfs_list = do_serial_sims(nsims=nsims, npops=self.params.npops, verbose=verbose)
-    
-        with open(outfile, 'a+') as simout:
-            for row, msfs in zip(param_df.iterrows(), msfs_list):
-                try:
-                    simout.write(" ".join(map(str, r[1][["zeta", "psi"]].tolist())) + " " + msfs.to_string() + "\n")
-                except Exception as inst:
-                    print("Failed: {}\n{}".format(row, msfs))
-        return msfs_list
-
-
-    ## Main function for managing cluster parallelized simulations
-    def run(self, sims, ipyclient=None, force=False, quiet=False):
+    def simulate(self, nsims=1, ipyclient=None, quiet=False, verbose=False, force=False):
         """
         Do the heavy lifting here. 
 
-        :param int sims: The number of PTA community assembly simulations to
+        :param int nsims: The number of PTA codemographic simulations to
             perform.
         :param ipyparallel.Client ipyclient: If specified use this ipyparallel
             client to parallelize simulation runs. If not specified simulations
             will be run serially.
+        :para bool quiet: Whether to display progress of these simulations.
+        :para bool verbose: Display a bit more progress information.
         :param bool force: Whether to append to or overwrite results from
             previous simulations. Setting `force` to ``True`` will overwrite
             any previously generated simulation in the `project_dir/SIMOUT.txt`
             file.
-        :para bool quiet: Whether to display progress of these simulations.
         """
-        if not quiet: print("    Generating {} simulation(s).".format(sims))
+        param_df = pd.DataFrame([], columns=["zeta", "psi", "pops_per_tau", "taus", "epsilons"])
+
+        if not quiet: print("    Generating {} simulation(s).".format(nsims))
 
         if not os.path.exists(self.paramsdict["project_dir"]):
             os.mkdir(self.paramsdict["project_dir"])
 
-        simfile = os.path.join(self.paramsdict["project_dir"], "SIMOUT.txt")
+        simfile = os.path.join(self.paramsdict["project_dir"], "SIMOUT.txt")    
         ## Open output file. If force then overwrite existing, otherwise just append.
-        append = 'a'
+        io_mode = 'a'
         if force:
-            append = 'w'
+            io_mode = 'w'
             ## Prevent from shooting yourself in the foot with -f
             try:
                 os.rename(simfile, simfile+".bak")
             except FileNotFoundError:
                 ## If the simfile doesn't exist catch the error and move on
                 pass
+
         ## Decide whether to print the header, if stuff is already in there then
         ## don't print the header, unless you're doing force because this opens
         ## in overwrite mode.
-        params = self.metacommunity._get_params_header() +\
-                 self._get_params_header() +\
-                 list(self.islands.values())[0]._get_params_header()
-        header = "\t".join(params + PTA.stats._get_sumstats_header(sgd_bins=self._hackersonly["sgd_bins"],\
-                                                                    sgd_dims=self._hackersonly["sgd_dimensions"],
-                                                                    metacommunity_traits=self.metacommunity._get_trait_values())) + "\n"
+        header = "watdo"
+
         LOGGER.debug("SIMOUT header - {}".format(header))
         if os.path.exists(simfile) and not force:
             header = ""
-        SIMOUT = open(simfile, append)
+        SIMOUT = open(simfile, io_mode)
         SIMOUT.write(header)
 
-        ## Just get all the time values to simulate up front
-        ## Doesn't save time really, just makes housekeeping easier
-        gens = sample_param_range(self.paramsdict["generations"], nsamps=sims)
-        ## Check if we're doing steps or lambda
-        do_lambda = False
-        if isinstance(gens[0], float):
-            do_lambda = True
-
-        LOGGER.debug("Sample of durations of simulations: {}".format(gens[:10]))
-
-        ## Run serially. This will be slow for anything but toy models.
-        printstr = " Performing Simulations    | {} |"
-        if not ipyclient:
-            start = time.time()
-            try:
-                for i in range(sims):
-                    elapsed = datetime.timedelta(seconds=int(time.time()-start))
-                    if not quiet: progressbar(sims, i, printstr.format(elapsed))
-
-                    if not do_lambda:
-                        res = self.simulate(nsteps=gens[i])
-                    else:
-                        res = self.simulate(_lambda=gens[i], quiet=quiet)
-
-                    SIMOUT.write(res + "\n")
-                    LOGGER.debug("Finished simulation {} stats:\n{}".format(i, res))
-            except KeyboardInterrupt as inst:
-                print("\n    Cancelling remaining simulations")
-            if not quiet: progressbar(100, 100, " Finished {} simulations\n".format(i))
-
-        ## Parallelize
+        if ipyclient:
+            param_df, msfs_list = self.do_parallel_sims(ipyclient, nsims=nsims, quiet=quiet, verbose=verbose)
         else:
-            parallel_jobs = {}
-
-            ## store ipyclient engine pids to the Assembly so we can
-            ## hard-interrupt them later if assembly is interrupted.
-            ## Only stores pids of engines that aren't busy at this moment,
-            ## otherwise it would block here while waiting to find their pids.
-            self._ipcluster["pids"] = {}
-            for eid in ipyclient.ids:
-                engine = ipyclient[eid]
-                if not engine.outstanding:
-                    pid = engine.apply(os.getpid).get()
-                    self._ipcluster["pids"][eid] = pid
-
-            ## Magic to make the Region() object picklable
-            ipyclient[:].use_cloudpickle()
-            lbview = ipyclient.load_balanced_view()
-            for i in range(sims):
-                if do_lambda:
-                    parallel_jobs[i] = lbview.apply(simulate, self, gens[i], 0)
-                else:
-                    parallel_jobs[i] = lbview.apply(simulate, self, 0, gens[i])
-
-            ## Wait for all jobs to finish
-            start = time.time()
-            while 1:
+            # Run simulations serially
+            param_df, msfs_list = self.do_serial_sims(nsims=nsims, quiet=quiet, verbose=verbose)
+    
+        with open(outfile, io_mode) as simfile:
+            for row, msfs in zip(param_df.iterrows(), msfs_list):
                 try:
-                    fin = [i.ready() for i in parallel_jobs.values()]
-                    elapsed = datetime.timedelta(seconds=int(time.time()-start))
-                    if not quiet: progressbar(len(fin), sum(fin),
-                        printstr.format(elapsed))
-                    time.sleep(0.1)
-                    if len(fin) == sum(fin):
-                        print("")
-                        break
-                except KeyboardInterrupt as inst:
-                    print("\n    Cancelling remaining simulations.")
-                    break
-            if not quiet: progressbar(100, 100, "\n    Finished {} simulations\n".format(len(fin)))
-
-            faildict = {}
-            passdict = {}
-            ## Gather results
-            for result in parallel_jobs:
-                try:
-                    if not parallel_jobs[result].successful():
-                        faildict[result] = parallel_jobs[result].metadata.error
-                    else:
-                        passdict[result] = parallel_jobs[result].result()
-                        res = passdict[result]
-                        SIMOUT.write(res + "\n")
+                    simfile.write(" ".join(map(str, r[1][["zeta", "psi"]].tolist())) + " " + msfs.to_string() + "\n")
                 except Exception as inst:
-                    LOGGER.error("Caught a failed simulation - {}".format(inst))
-                    ## Don't let one bad apple spoin the bunch,
-                    ## so keep trying through the rest of the asyncs
-
-            ## TODO: Do something more intelligent in the event that any of them fails.
-            LOGGER.error("Any failed simulations will report here: {}".format(faildict))
-
-
-    ## This is the function that will be run inside the cluster engine, so
-    ## everything it does needs to be
-    ##
-    ## The _lambda getting an underscore here is an artifact of the choice
-    ## of symbol for %equilibrium colliding with the python anonymous function
-    ## name. Don't confuse them.
-    ##
-    ## TODO: Need to think about how to quantify lambda if there is more
-    ## than one island
-    ## TODO: Need to implement the force flag here to allow or prevent overwriting
-    def simulate(self, _lambda=0, nsteps=0, log_full=False, quiet=True):
-        ## Run one realization of this Region. simulate() accepts EITHER _lambda
-        ## value to run to OR # of steps to perform, and not both.
-        ##  * log_full turns on extremely verbose logging to files in the outdir
-        ##  * quiet toggles the more fine grained progress bar and normally
-        ##    should be set to True, especially on cluster jobs, otherwise it
-        ##    floods the stdout pipe
-        LOGGER.debug("Entering simulate(): lambda={}, nsteps={}".format(_lambda, nsteps))
-        if _lambda > 0 and nsteps > 0:
-            LOGGER.error("simulate accepts only one of either lambda or nsteps args")
-            return
-        if _lambda == 0 and nsteps == 0:
-            msg = "Either _lambda or nsteps must be specified."
-            raise PTAError(msg)
-
-        ## If priors for alpha are set then resample alpha
-        if self._priors["alpha"]:
-            self.paramsdict["alpha"] = sample_param_range(self._priors["alpha"])[0]
-            LOGGER.debug("alpha - {}".format(self.paramsdict["alpha"]))
-
-        if self._priors["community_assembly_model"]:
-            self.paramsdict["community_assembly_model"] = np.random.choice(self._priors["community_assembly_model"])
-
-        if self._priors["generations"]:
-            self.paramsdict["generations"] = sample_param_range(self._priors["generations"])[0]
-            
-        ## Flip the metacommunity per simulation so we get new draws of trait values.
-        ## This is a little slow for logser, and also performance scales with metacommunity size
-        self._reset_metacommunity()
-
-        ## Not as big of a deal on ipp simulations, but if you're running on a local computer
-        ## the local communities need to get reupped for each simulation.
-        self._reset_local_communities()
-
-        if self._log_files:
-            ## Get an output directory for dumping data
-            outdir = self._get_simulation_outdir()
-            self.write_params(outdir=outdir)
-
-        step = 0
-        ## Create an temp function to test whether we've reached the end of this simulation
-        if _lambda > 0:
-            ## In the absence of a better strategy just test for lambda in the first local community
-            done_func = lambda: list(self.islands.values())[0]._lambda() >= _lambda
-        else:
-            done_func = lambda: step >= nsteps
-
-        while not done_func():
-            ## This is not ideal functionality, but it at least gives you a sense of progress
-            ## Especially don't do this on ipyparallel engines, because it floods the pipe.
-            if not quiet:
-                progressbar(100, 100, "{0:.4f}".format(list(self.islands.values())[0]._lambda()))
-            for island in self.islands.values():
-                island.step()
-            step += 1
-            if not step % self._hackersonly["recording_period"]:
-               for island in self.islands.values():
-                    island._log(full=log_full)
-        ## TODO: Combine stats across local communities if more than one
-        for name, island in self.islands.items():
-            statsdf = island.get_stats()
-
-        ## Paste regional parameters on the front of the local community
-        ## parameters and simulations
-        regional_params = self.metacommunity._get_params_values() +\
-                            self._get_params_values()
-        tmpsimout = regional_params + list(statsdf.T.values[0])
-        simout = []
-        for x in tmpsimout:
-            try:
-                simout.append(np.round(x, 5))
-            except:
-                simout.append(x)
-        simout = "\t".join(map(str, np.array(simout)))
-
-        return simout
-
-
-def simulate(data, _lambda=0, nsteps=0, quiet=True):
-    import os
-    LOGGER.debug("Entering sim - {} on pid {}\n{}".format(data, os.getpid(), data.paramsdict))
-    res = data.simulate(_lambda=_lambda, nsteps=nsteps, quiet=quiet)
-    LOGGER.debug("Leaving sim - {} on pid {}\n{}".format(data, os.getpid(),\
-                                                        [str(x) for x in data.islands.values()]))
-    return res
+                    print("Failed: {}\n{}".format(row, msfs))
 
 
 #############################
@@ -727,14 +553,4 @@ REQUIRE_NAME = """\
     """
 
 if __name__ == "__main__":
-    logging.info("wat")
-    data = Region("tmp")
-    data.add_local_community("tmploc", 500, 0.01)
-    #print("Testing step function.")
-    #data.simulate(_lambda=0, nsteps=1000)
-    #print(data.islands.values()[0])
-    #data.simulate(_lambda=0, nsteps=1000)
-    #print(data.islands.values()[0])
-    print("Testing lambda function.")
-    data.simulate(_lambda=.4)
-
+    pass

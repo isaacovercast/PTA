@@ -7,7 +7,7 @@ __author__ = "Isaac Overcast"
 
 ## Possible values for __loglevel__: "DEBUG"  "INFO"  "WARN"  "ERROR"
 __debugflag__ = "./.debug"
-__debugfile__ = "./PTA_log.txt"
+__debugfile__ = "./pta_log.txt"
 
 ## define state vars
 __interactive__ = 1      ## CLI __main__ changes to 0
@@ -25,6 +25,7 @@ import warnings
 with warnings.catch_warnings(record=True) as w:
     matplotlib.use("agg")
 
+from .PTA import DemographicModel
 from . import util
 from . import plotting
 

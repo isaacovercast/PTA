@@ -16,8 +16,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def parse_params(args):
-    """ Parse the params file and return Region params as a dict
-    and a list of dicts for params for each island."""
+    """ Parse the params file and return params as a dict"""
 
     ## check that params.txt file is correctly formatted.
     try:
@@ -26,43 +25,41 @@ def parse_params(args):
     except IOError as _:
         sys.exit("  No params file found")
 
-    ## Params file is sectioned off by region and then by n local communities
-    ## do each section independently. The [1:] thing just drops the first result
-    ## from split which is '' anyway.
+    ## The [1:] thing just drops the first result from split which is '' anyway.
     plines = plines.split("------- ")[1:]
 
-    ## Get Region params and make into a dict, ignore all blank lines
+    ## Get params and make into a dict, ignore all blank lines
     items = [i.split("##")[0].strip() for i in plines[0].split("\n")[1:] if not i.strip() == ""]
-    keys = list(PTA.PTA('null', quiet=True).paramsdict.keys())
+    keys = list(PTA.DemographicModel('null', quiet=True).paramsdict.keys())
     params = {str(i):j for i, j in zip(keys, items)}
 
     LOGGER.debug("Got params - {}".format(params))
 
-    return region_params
+    return params
 
 
-def getregion(args, region_params, meta_params, island_params):
+def getmodel(args, params):
     """ 
     loads simulation or creates a new one and set its params as
     read in from the params file. Does not launch ipcluster. 
     """
 
-    project_dir = PTA.util._expander(region_params['project_dir'])
+    project_dir = PTA.util._expander(params['project_dir'])
     LOGGER.debug("project_dir: {}".format(project_dir))
-    sim_name = region_params['simulation_name']
+    sim_name = params['simulation_name']
 
     ## make sure the working directory exists.
     if not os.path.exists(project_dir):
         os.mkdir(project_dir)
 
-    data = PTA.Region(sim_name, quiet=args.quiet, log_files=args.log_files)
+    data = PTA.DemographicModel(sim_name, quiet=args.quiet, verbose=args.verbose)
 
-    ## Populate the parameters of the Region
-    for param in region_params:
+    ## Populate the parameters
+    for param in params:
         try:
-            data = set_params(data, param, region_params[param], quiet=args.quiet)
+            data = set_params(data, param, params[param], quiet=args.quiet)
         except Exception as inst:
-            print("Error in __main__.getregion(): {}".format(inst))
+            print("Error in __main__.getmodel(): {}".format(inst))
             sys.exit(-1)
 
     return data
@@ -111,7 +108,7 @@ def parse_command_line():
         help="do not print anything ever.")
 
     parser.add_argument('-d', action='store_true', dest="debug",
-        help="print lots more info to mess_log.txt.")
+        help="print lots more info to pta_log.txt.")
 
     parser.add_argument('-l', action='store_true', dest="log_files",
         help="Write out lots of information in one directory per simulation.")
@@ -166,22 +163,23 @@ def do_sims(data, args):
         if not args.quiet: print("    Parallelization disabled.")
     try:
         ## Do stuff here
-        data.run(
-            sims=args.sims,
-            force=args.force,
+        data.simulate(
+            nsims=args.sims,
             ipyclient=ipyclient,
-            quiet=args.quiet)
+            quiet=args.quiet,
+            verbose=args.verbose,
+            force=args.force)
     except KeyboardInterrupt as inst:
         print("\n  Keyboard Interrupt by user")
         LOGGER.info("assembly interrupted by user.")
     except PTAError as inst:
         LOGGER.error("PTAError: %s", inst)
-        print("\n  Encountered an error (see details in ./mess_log.txt)"+\
+        print("\n  Encountered an error (see details in ./pta_log.txt)"+\
               "\n  Error summary is below -------------------------------"+\
               "\n{}".format(inst))
     except Exception as inst:
         LOGGER.error(inst)
-        print("\n  Encountered an unexpected error (see ./mess_log.txt)"+\
+        print("\n  Encountered an unexpected error (see ./pta_log.txt)"+\
               "\n  Error message is below -------------------------------"+\
               "\n{}".format(inst))
     finally:
@@ -206,7 +204,7 @@ def do_sims(data, args):
                 ## if CLI, stop jobs and shutdown. Don't use _cli here 
                 ## because you can have a CLI object but use the --ipcluster
                 ## flag, in which case we don't want to kill ipcluster.
-                if 'mess-cli' in data._ipcluster["cluster_id"]:
+                if 'pta-cli' in data._ipcluster["cluster_id"]:
                     LOGGER.info("  shutting down engines")
                     ipyclient.shutdown(hub=True, block=False)
                     ipyclient.close()
@@ -226,30 +224,6 @@ def do_sims(data, args):
             LOGGER.error("shutdown warning: %s", inst2)
 
 
-def fancy_plots(data, args):
-    """ Fancy plots are nice to generate once in a while, but you don't want to
-    be making them for all your actual simulations because they take a long time
-    and plus one or two will be very representative of a model."""
-
-    try:
-        if args.ipcluster or args.cores >=0:
-            print("    Generating fancy plots so running locally on one core.")
-
-        data.fancy_plots(quiet=args.quiet)
-    except KeyboardInterrupt as inst:
-        print("\n  Keyboard Interrupt by user")
-        LOGGER.info("assembly interrupted by user.")
-    except PTAError as inst:
-        LOGGER.error("PTAError: %s", inst)
-        print("\n  Encountered an error (see details in ./mess_log.txt)"+\
-              "\n  Error summary is below -------------------------------"+\
-              "\n{}".format(inst))
-    except Exception as inst:
-        LOGGER.error(inst)
-        print("\n  Encountered an unexpected error (see ./mess_log.txt)"+\
-              "\n  Error message is below -------------------------------"+\
-              "\n{}".format(inst))
-
 def main():
     """ main function """
     PTA.__interactive__ = 0  ## Turn off API output
@@ -259,7 +233,7 @@ def main():
 
     if not args.quiet: print(PTA_HEADER)
 
-    ## Turn the debug output written to mess_log.txt up to 11!
+    ## Turn the debug output written to pta_log.txt up to 11!
     ## Clean up the old one first, it's cleaner to do this here than
     ## at the end (exceptions, etc)
     if os.path.exists(PTA.__debugflag__):
@@ -274,7 +248,7 @@ def main():
     if args.new:
         ## Create a tmp assembly, call write_params to make default params.txt
         try:
-            tmpassembly = PTA.PTA(args.new, quiet=True)
+            tmpassembly = PTA.DemographicModel(args.new, quiet=True)
             tmpassembly.write_params("params-{}.txt".format(args.new), outdir="./", 
                                      force=args.force)
         except Exception as inst:
@@ -288,12 +262,12 @@ def main():
 
     ## if params then must provide action argument with it
     if args.params:
-        if not any([args.results, args.sims, args.fancy_plots]):
+        if not any([args.sims]):
             print(PTA_USAGE)
             sys.exit(2)
 
     if not args.params:
-        if any([args.results, args.sims]):
+        if any([args.sims]):
             print(PTA_USAGE)
             sys.exit(2)
 
@@ -305,25 +279,17 @@ def main():
         logfile.write("\n  Using args {}".format(vars(args)))
         logfile.write("\n  Platform info: {}\n".format(os.uname()))
 
-    ## create new Region or load existing Region
+    ## create new simulation model
     if args.params:
-        region_params, meta_params, island_params = parse_params(args)
-        LOGGER.debug("region params - {}\nmetacommunity params - {}\nisland params - {}"\
-                    .format(region_params, meta_params, island_params))
+        params = parse_params(args)
+        LOGGER.debug("params - {}".format(params))
 
-        ## launch or load Region with custom profile/pid
-        data = getregion(args, region_params, meta_params, island_params)
+        ## launch or load simulationwith custom profile/pid
+        data = getmodel(args, params)
 
         ## Validate, format, and import empirical data
         if args.empirical:
             import_empirical(args.empirical)
-
-        ## Print results and exit immediately
-        if args.results:
-            showstats(region_params, meta_params, island_params)
-
-        elif args.fancy_plots:
-            fancy_plots(data, args)
 
         ## Generate numerous simulations
         elif args.sims:
@@ -360,7 +326,6 @@ PTA_HEADER = \
 PTA_USAGE = """
     Must provide action argument along with -p argument for params file. 
     e.g., PTA -p params-test.txt -s 10000           ## run 10000 simulations
-    e.g., PTA -p params-test.txt -r                 ## shows results
     """
 
 if __name__ == "__main__": 

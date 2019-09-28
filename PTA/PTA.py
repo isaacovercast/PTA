@@ -479,7 +479,8 @@ class DemographicModel(object):
         ## Decide whether to print the header, if stuff is already in there then
         ## don't print the header, unless you're doing force because this opens
         ## in overwrite mode.
-        header = "watdo\n"
+        ## TODO: Fix the header row. Maybe it's not needed?
+        header = ""
 
         LOGGER.debug("SIMOUT header - {}".format(header))
         if os.path.exists(simfile) and not force:

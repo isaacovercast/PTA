@@ -123,7 +123,7 @@ def tuplecheck(newvalue, dtype=str):
                 raise MESSError("{}\ttuplecheck() failed to cast to {} - {}"\
                             .format(inst, dtype, newvalue))
 
-    LOGGER.debug("Returning tuple - {}".format(newvalue))
+    LOGGER.debug("Returning {} - {}".format(type(newvalue), newvalue))
     return newvalue
 
 

@@ -10,8 +10,8 @@ import tempfile
 from collections import OrderedDict
 
 import PTA
-from .util import *
-from .msfs import *
+from PTA.util import *
+from PTA.msfs import *
 
 LOGGER = logging.getLogger(__name__)
 
@@ -325,7 +325,7 @@ class DemographicModel(object):
         return psi, pops_per_tau.astype(int)
 
     
-    def do_parallel_sims(self, ipyclient, nsims=1, quiet=False, verbose=False):
+    def parallel_simulate(self, ipyclient, nsims=1, quiet=False, verbose=False):
         npops = self.paramsdict["npops"]
         parallel_jobs = {}
         _ipcluster = {}
@@ -342,7 +342,8 @@ class DemographicModel(object):
     
         lbview = ipyclient.load_balanced_view()
         for i in range(nsims):
-            parallel_jobs[i] = lbview.apply(do_serial_sims, 5, verbose)
+            ## Call do_serial sims args are: nsims, quiet, verbose
+            parallel_jobs[i] = lbview.apply(serial_simulate, self, 1, True, False)
     
         ## Wait for all jobs to finish
         start = time.time()
@@ -359,9 +360,8 @@ class DemographicModel(object):
             except KeyboardInterrupt as inst:
                 print("\n    Cancelling remaining simulations.")
                 break
-        if not quiet: progressbar(100, 100, "\n    Finished {} simulations\n".format(len(fin)))
-        if verbose: print("Done w/ sims")
-        
+        if not quiet: progressbar(100, 100, " Finished {} simulations in   {}\n".format(i, elapsed))
+
         faildict = {}
         passdict = {}
         param_df = pd.DataFrame()
@@ -385,7 +385,7 @@ class DemographicModel(object):
         return param_df, msfs_list
     
     
-    def do_serial_sims(self, nsims=1, quiet=False, verbose=False):
+    def serial_simulate(self, nsims=1, quiet=False, verbose=False):
         import pandas as pd
         npops = self.paramsdict["npops"]
     
@@ -401,7 +401,7 @@ class DemographicModel(object):
 
                 zeta = self._sample_zeta()
                 psi, pops_per_tau = self.get_pops_per_tau(zeta)
-                if verbose: print(zeta, psi, pops_per_tau)
+                LOGGER.debug("sim {} - zeta {} - psi {} - pops_per_tau{}".format(i, zeta, psi, pops_per_tau))
                 taus = self._sample_tau(ntaus=len(pops_per_tau))
                 epsilons = self._sample_epsilon(len(pops_per_tau))
                 param_df.loc[i] = [zeta, psi, pops_per_tau, taus, epsilons]
@@ -420,7 +420,8 @@ class DemographicModel(object):
                 print("\n    Cancelling remaining simulations")
                 break
             except Exception as inst:
-                raise PTAError("Simulation failed: {}".format(inst))
+                LOGGER.debug("Simulation failed: {}".format(inst))
+                raise PTAError("Failed inside serial_simulate: {}".format(inst))
 
         if not quiet: progressbar(100, 100, " Finished {} simulations in   {}\n".format(i, elapsed))
 
@@ -489,10 +490,10 @@ class DemographicModel(object):
             outfile.write(header)
 
         if ipyclient:
-            param_df, msfs_list = self.do_parallel_sims(ipyclient, nsims=nsims, quiet=quiet, verbose=verbose)
+            param_df, msfs_list = self.parallel_simulate(ipyclient, nsims=nsims, quiet=quiet, verbose=verbose)
         else:
             # Run simulations serially
-            param_df, msfs_list = self.do_serial_sims(nsims=nsims, quiet=quiet, verbose=verbose)
+            param_df, msfs_list = self.serial_simulate(nsims=nsims, quiet=quiet, verbose=verbose)
     
         with open(simfile, io_mode) as outfile:
             for row, msfs in zip(param_df.iterrows(), msfs_list):
@@ -501,6 +502,15 @@ class DemographicModel(object):
                 except Exception as inst:
                     print("Simulation failed. See pta_log.txt.")
                     LOGGER.error("Failed simulations: {}\n{}\n{}".format(inst, row, msfs))
+                    print("Failed simulations: {}\n{}\n{}".format(inst, row, msfs))
+
+
+def serial_simulate(model, nsims=1, quiet=False, verbose=False):
+    import os
+    LOGGER.debug("Entering sim - {} on pid {}\n{}".format(model, os.getpid(), model.paramsdict))
+    res = model.serial_simulate(nsims, quiet=quiet, verbose=verbose)
+    LOGGER.debug("Leaving sim - {} on pid {}".format(model, os.getpid()))
+    return res
 
 
 #############################

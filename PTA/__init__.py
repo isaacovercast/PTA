@@ -25,7 +25,7 @@ import warnings
 with warnings.catch_warnings(record=True) as w:
     matplotlib.use("agg")
 
-from .PTA import DemographicModel
+from .demography import DemographicModel
 from . import util
 from . import plotting
 

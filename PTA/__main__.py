@@ -9,8 +9,8 @@ import sys
 import os
 
 import PTA
-from .util import *
-from .parallel import *
+from PTA.util import *
+from PTA.parallel import *
 
 LOGGER = logging.getLogger(__name__)
 

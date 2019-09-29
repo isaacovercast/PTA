@@ -11,7 +11,7 @@ import time
 import sys
 import os
 
-from .util import PTAError
+from PTA.util import PTAError
 
 
 import logging

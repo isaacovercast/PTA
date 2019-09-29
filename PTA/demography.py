@@ -339,12 +339,12 @@ class DemographicModel(object):
             if not engine.outstanding:
                 pid = engine.apply(os.getpid).get()
                 _ipcluster["pids"][eid] = pid
-    
+
         lbview = ipyclient.load_balanced_view()
-        for i in range(nsims):
+        for i in range(nsims+1):
             ## Call do_serial sims args are: nsims, quiet, verbose
             parallel_jobs[i] = lbview.apply(serial_simulate, self, 1, True, False)
-    
+
         ## Wait for all jobs to finish
         start = time.time()
         printstr = " Performing Simulations    | {} |"

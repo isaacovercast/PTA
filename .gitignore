@@ -1,0 +1,6 @@
+.ipynb_checkpoints/
+PTA.egg-info/
+PTA/__pycache__/
+PTA/default_PTA/
+*pta_log.txt
+*params-*

@@ -483,9 +483,6 @@ class DemographicModel(object):
 
         self._write_df(msfs_list, force=force)
 
-        ## Dump the simulations to the SIMOUT.txt file
-        self._write_simout(msfs_list, force=force)
-
 
     ## Save the results to the output DataFrame
     def _write_df(self, msfs_list, force=False):
@@ -509,8 +506,15 @@ class DemographicModel(object):
         dat.to_csv(simfile, header=True, index=False, sep=self._sep, float_format='%.3f')
 
 
-    ## This is somewhat old-fashioned, but maintained for backwards compatibility.
     def _write_simout(self, msfs_list, force=False):
+        """
+        This is the somewhat old-fashioned way of doing it where you just open
+        the file and start writing out the simulations. This will _bite_ you if
+        the msfs are sparse because then the lengths of lines will be different.
+        I'm keeping it for now because I wrote it and it works and I'm precious
+        about it. You can probably just remove, as the _write_df call generates
+        essentially the exact same output, but is more reliable.
+        """
         simfile = os.path.join(self.paramsdict["project_dir"], "SIMOUT.txt")
         ## Open output file. If force then overwrite existing, otherwise just append.
         io_mode = 'a'

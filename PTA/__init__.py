@@ -1,7 +1,6 @@
 """
 PTA - Phylogeographic Temporal Analysis
 """
-
 __version__ = "0.0.9"
 __author__ = "Isaac Overcast"
 
@@ -80,7 +79,6 @@ def cluster_info(ipyclient, spacer=""):
         result.append("{}host compute node: [{} cores] on {}"\
             .format(spacer, hosts.count(hostname), hostname))
     print(("\n".join(result)))
-
 
 
 def _debug_on():

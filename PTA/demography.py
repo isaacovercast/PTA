@@ -33,6 +33,7 @@ class DemographicModel(object):
         ## special characters, spaces, or path delimiters. Allow _ and -.
         ## This will raise an error immediately if there are bad chars in name.
         self._check_name(name)
+        self.name = name
 
         self._version = PTA.__version__
 
@@ -363,7 +364,6 @@ class DemographicModel(object):
                 if not quiet: progressbar(len(fin), sum(fin), printstr.format(elapsed))
                 time.sleep(0.1)
                 if len(fin) == sum(fin):
-                    print("")
                     break
             except KeyboardInterrupt as inst:
                 print("\n    Cancelling remaining simulations.")
@@ -465,7 +465,7 @@ class DemographicModel(object):
         :para bool verbose: Display a bit more progress information.
         :param bool force: Whether to append to or overwrite results from
             previous simulations. Setting `force` to ``True`` will overwrite
-            any previously generated simulation in the `project_dir/SIMOUT.txt`
+            any previously generated simulation in the `project_dir/{name}-SIMOUT.txt`
             file.
         """
         param_df = pd.DataFrame([], columns=["zeta", "psi", "pops_per_tau", "taus", "epsilons"])
@@ -487,7 +487,7 @@ class DemographicModel(object):
     ## Save the results to the output DataFrame
     def _write_df(self, msfs_list, force=False):
 
-        simfile = os.path.join(self.paramsdict["project_dir"], "SIMOUT.csv")
+        simfile = os.path.join(self.paramsdict["project_dir"], "{}-SIMOUT.csv".format(self.name))
         ## Open output file. If force then overwrite existing, otherwise just append.
         if force:
             ## Prevent from shooting yourself in the foot with -f
@@ -515,7 +515,7 @@ class DemographicModel(object):
         about it. You can probably just remove, as the _write_df call generates
         essentially the exact same output, but is more reliable.
         """
-        simfile = os.path.join(self.paramsdict["project_dir"], "SIMOUT.txt")
+        simfile = os.path.join(self.paramsdict["project_dir"], "{}-SIMOUT.txt".format(self.name))
         ## Open output file. If force then overwrite existing, otherwise just append.
         io_mode = 'a'
         if force:

@@ -186,7 +186,7 @@ def do_sims(data, args):
         try:
             ## can't close client if it was never open
             if ipyclient:
-                print("Clean up ipcluster {}".format(ipyclient))
+                if args.verbose: print("Clean up ipcluster {}".format(ipyclient))
                 ## send SIGINT (2) to all engines
                 try:
                     ipyclient.abort(block=False)

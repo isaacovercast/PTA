@@ -77,9 +77,11 @@ class DemographicModel(object):
 
         ## elite hackers only internal dictionary, normally you shouldn't mess with this
         ##  * sorted_sfs: Whether or not to sort the bins of the msfs
-
+        ##  * allow_psi>1: Whether to allow multiple co-expansion events per simulation
+        ##      or to fix it to 1. This is the msbayes vs pipemaster flag.
         self._hackersonly = dict([
                        ("sorted_sfs", False),
+                       ("allow_psi>1", True), 
         ])
 
 
@@ -299,7 +301,10 @@ class DemographicModel(object):
         # include at least 2 taxa
         if n_sync > 1:
             try:
-                psi = np.random.randint(1, (n_sync+1)/2)
+                if self._hackersonly["allow_psi>1"]:
+                    psi = np.random.randint(1, (n_sync+1)/2)
+                else:
+                    psi = 1
             except ValueError:
                 # If n_sync + 1 / 2 = 1 then psi = 1
                 psi = 1
@@ -341,7 +346,7 @@ class DemographicModel(object):
                 _ipcluster["pids"][eid] = pid
 
         lbview = ipyclient.load_balanced_view()
-        for i in range(nsims+1):
+        for i in range(nsims):
             ## Call do_serial sims args are: nsims, quiet, verbose
             parallel_jobs[i] = lbview.apply(serial_simulate, self, 1, True, False)
 
@@ -360,7 +365,7 @@ class DemographicModel(object):
             except KeyboardInterrupt as inst:
                 print("\n    Cancelling remaining simulations.")
                 break
-        if not quiet: progressbar(100, 100, " Finished {} simulations in   {}\n".format(i, elapsed))
+        if not quiet: progressbar(100, 100, " Finished {} simulations in   {}\n".format(i+1, elapsed))
 
         faildict = {}
         passdict = {}
@@ -373,8 +378,8 @@ class DemographicModel(object):
                     faildict[result] = parallel_jobs[result].metadata.error
                 else:
                     passdict[result] = parallel_jobs[result].result()
-                    p_df, m_list = passdict[result]
-                    param_df = pd.concat([param_df, p_df], axis=1)
+                    m_list = passdict[result]
+                    #param_df = pd.concat([param_df, p_df], axis=1)
                     msfs_list.extend(m_list)
             except Exception as inst:
                 LOGGER.error("Caught a failed simulation - {}".format(inst))
@@ -382,7 +387,7 @@ class DemographicModel(object):
                 ## so keep trying through the rest of the asyncs
         LOGGER.debug(faildict)
 
-        return param_df, msfs_list
+        return msfs_list
     
     
     def serial_simulate(self, nsims=1, quiet=False, verbose=False):
@@ -393,7 +398,7 @@ class DemographicModel(object):
         msfs_list = []
 
         printstr = " Performing Simulations    | {} |"
-        for i in range(nsims+1):
+        for i in range(nsims):
             start = time.time()
             try:
                 elapsed = datetime.timedelta(seconds=int(time.time()-start))
@@ -414,6 +419,8 @@ class DemographicModel(object):
                                                 tau=taus[tidx],
                                                 epsilon=epsilons[tidx]))
                 msfs = multiSFS(sfs_list)
+                msfs.set_params(pd.Series([zeta, psi, pops_per_tau, taus, epsilons],\
+                                        index=["zeta", "psi", "pops_per_tau", "taus", "epsilons"]))
                 msfs_list.append(msfs)
 
             except KeyboardInterrupt as inst:
@@ -423,9 +430,9 @@ class DemographicModel(object):
                 LOGGER.debug("Simulation failed: {}".format(inst))
                 raise PTAError("Failed inside serial_simulate: {}".format(inst))
 
-        if not quiet: progressbar(100, 100, " Finished {} simulations in   {}\n".format(i, elapsed))
+        if not quiet: progressbar(100, 100, " Finished {} simulations in   {}\n".format(i+1, elapsed))
 
-        return param_df, msfs_list
+        return msfs_list
 
 
     def get_sfs(self, name, N_e=1e6, tau=20000, epsilon=10, verbose=False):
@@ -477,32 +484,28 @@ class DemographicModel(object):
                 ## If the simfile doesn't exist catch the error and move on
                 pass
 
+        if ipyclient:
+            msfs_list = self.parallel_simulate(ipyclient, nsims=nsims, quiet=quiet, verbose=verbose)
+        else:
+            # Run simulations serially
+            msfs_list = self.serial_simulate(nsims=nsims, quiet=quiet, verbose=verbose)
+    
         ## Decide whether to print the header, if stuff is already in there then
         ## don't print the header, unless you're doing force because this opens
         ## in overwrite mode.
-        ## TODO: Fix the header row. Maybe it's not needed?
-        header = ""
-
-        LOGGER.debug("SIMOUT header - {}".format(header))
+        header = msfs_list[0]._header() + "\n"
         if os.path.exists(simfile) and not force:
             header = ""
+
         with open(simfile, io_mode) as outfile:
             outfile.write(header)
 
-        if ipyclient:
-            param_df, msfs_list = self.parallel_simulate(ipyclient, nsims=nsims, quiet=quiet, verbose=verbose)
-        else:
-            # Run simulations serially
-            param_df, msfs_list = self.serial_simulate(nsims=nsims, quiet=quiet, verbose=verbose)
-    
-        with open(simfile, io_mode) as outfile:
-            for row, msfs in zip(param_df.iterrows(), msfs_list):
+            for msfs in msfs_list:
                 try:
-                    outfile.write(" ".join(map(str, row[1][["zeta", "psi"]].tolist())) + " " + msfs.to_string() + "\n")
+                    outfile.write(msfs.to_string() + "\n")
                 except Exception as inst:
-                    print("Simulation failed. See pta_log.txt.")
-                    LOGGER.error("Failed simulations: {}\n{}\n{}".format(inst, row, msfs))
-                    print("Failed simulations: {}\n{}\n{}".format(inst, row, msfs))
+                    print("Writing output failed. See pta_log.txt.")
+                    LOGGER.error("Malformed msfs: {}\n{}\n{}".format(inst, msfs.to_string()))
 
 
 def serial_simulate(model, nsims=1, quiet=False, verbose=False):

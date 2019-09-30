@@ -75,6 +75,9 @@ class DemographicModel(object):
                         ("epsilon", []),
         ])
 
+        ## Separator to use for reading/writing files
+        self._sep = " "
+
         ## elite hackers only internal dictionary, normally you shouldn't mess with this
         ##  * sorted_sfs: Whether or not to sort the bins of the msfs
         ##  * allow_psi>1: Whether to allow multiple co-expansion events per simulation
@@ -472,7 +475,43 @@ class DemographicModel(object):
         if not os.path.exists(self.paramsdict["project_dir"]):
             os.mkdir(self.paramsdict["project_dir"])
 
-        simfile = os.path.join(self.paramsdict["project_dir"], "SIMOUT.txt")    
+        if ipyclient:
+            msfs_list = self.parallel_simulate(ipyclient, nsims=nsims, quiet=quiet, verbose=verbose)
+        else:
+            # Run simulations serially
+            msfs_list = self.serial_simulate(nsims=nsims, quiet=quiet, verbose=verbose)
+
+        self._write_df(msfs_list, force=force)
+
+        ## Dump the simulations to the SIMOUT.txt file
+        self._write_simout(msfs_list, force=force)
+
+
+    ## Save the results to the output DataFrame
+    def _write_df(self, msfs_list, force=False):
+
+        simfile = os.path.join(self.paramsdict["project_dir"], "SIMOUT.csv")
+        ## Open output file. If force then overwrite existing, otherwise just append.
+        if force:
+            ## Prevent from shooting yourself in the foot with -f
+            try:
+                os.rename(simfile, simfile+".bak")
+            except FileNotFoundError:
+                ## If the simfile doesn't exist catch the error and move on
+                pass
+        try:
+            dat = pd.read_csv(simfile, sep=self._sep)
+        except FileNotFoundError:
+            dat = pd.DataFrame()
+
+        msfs_df = pd.DataFrame(list(map(lambda x: x.to_series(), msfs_list)))
+        dat = pd.concat([dat, msfs_df])
+        dat.to_csv(simfile, header=True, index=False, sep=self._sep, float_format='%.3f')
+
+
+    ## This is somewhat old-fashioned, but maintained for backwards compatibility.
+    def _write_simout(self, msfs_list, force=False):
+        simfile = os.path.join(self.paramsdict["project_dir"], "SIMOUT.txt")
         ## Open output file. If force then overwrite existing, otherwise just append.
         io_mode = 'a'
         if force:
@@ -484,16 +523,10 @@ class DemographicModel(object):
                 ## If the simfile doesn't exist catch the error and move on
                 pass
 
-        if ipyclient:
-            msfs_list = self.parallel_simulate(ipyclient, nsims=nsims, quiet=quiet, verbose=verbose)
-        else:
-            # Run simulations serially
-            msfs_list = self.serial_simulate(nsims=nsims, quiet=quiet, verbose=verbose)
-    
         ## Decide whether to print the header, if stuff is already in there then
         ## don't print the header, unless you're doing force because this opens
         ## in overwrite mode.
-        header = msfs_list[0]._header() + "\n"
+        header = msfs_list[0]._header(sep=self._sep) + "\n"
         if os.path.exists(simfile) and not force:
             header = ""
 
@@ -502,10 +535,10 @@ class DemographicModel(object):
 
             for msfs in msfs_list:
                 try:
-                    outfile.write(msfs.to_string() + "\n")
+                    outfile.write(msfs.to_string(sep=self._sep) + "\n")
                 except Exception as inst:
                     print("Writing output failed. See pta_log.txt.")
-                    LOGGER.error("Malformed msfs: {}\n{}\n{}".format(inst, msfs.to_string()))
+                    LOGGER.error("Malformed msfs: {}\n{}\n{}".format(inst, msfs.to_string(self._sep)))
 
 
 def serial_simulate(model, nsims=1, quiet=False, verbose=False):
@@ -514,6 +547,8 @@ def serial_simulate(model, nsims=1, quiet=False, verbose=False):
     res = model.serial_simulate(nsims, quiet=quiet, verbose=verbose)
     LOGGER.debug("Leaving sim - {} on pid {}".format(model, os.getpid()))
     return res
+
+
 
 
 #############################

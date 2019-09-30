@@ -92,7 +92,7 @@ def _filter_sims(sims,\
 
 def plot_simulations_hist(sims,\
                         ax='',\
-                        figsize=(20, 20),\
+                        figsize=(8, 8),\
                         feature_set='',\
                         nsims=1000,\
                         bins=20,\
@@ -132,16 +132,8 @@ def plot_simulations_hist(sims,\
                             tol=tol,\
                             verbose=verbose)
 
-    axs = neut_df.hist(figsize=figsize, label="neutral", alpha=alpha, bins=bins,
-                    color=MESS.plotting.model_colors["neutral"],  grid=False)
-
-    ## Flatten the list of axes and trim to make sure there's only exactly the
-    ## right number to match the number of summary stats retained.
-    axs = axs.flatten()[:len(sim_df.columns)]
-    _ = filt_df.hist(ax = axs, label="filtering", alpha=alpha, bins=bins,\
-                    color=MESS.plotting.model_colors["filtering"], grid=False)
-    _ = comp_df.hist(ax = axs, label="competition", alpha=alpha, bins=bins,\
-                    color=MESS.plotting.model_colors["competition"], grid=False)
+    target_df = sim_df[default_targets]
+    axs = target_df.hist(figsize=figsize, alpha=alpha, bins=bins, grid=False)
 
     plt.tight_layout()
     return axs

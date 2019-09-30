@@ -22,19 +22,14 @@ from sklearn.preprocessing import PowerTransformer, StandardScaler
 ##
 ## Helpful matplotlib info for plotting unicode characters:
 ## https://matplotlib.org/users/mathtext.html#subscripts-and-superscripts
-target_labels = {"mutation_rate":"\u03BC",\
-                "alpha":"\u03B1",\
+target_labels = {"zeta":"\u03B6",\
+                "psi":"\u03A8",\
                 "S_m":r"$S_M$",\
                 "J_m":r"$J_M$",\
-                "speciation_rate":"\u03BB",\
-                "death_proportion":"\u03B5",\
                 "trait_rate_meta":r"$\sigma^2_M",\
                 "ecological_strength":r"$s_E$",\
                 "J":r"$J$",\
-                "m":r"$m$",\
-                "speciation_prob":"\u03BD",\
-                "_lambda":"\u039B",\
-                "generation":"generations"}
+                "m":r"$m$"}
 
 from PTA.inference import default_targets
 

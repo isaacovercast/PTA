@@ -159,6 +159,19 @@ def set_params(data, param, newvalue, quiet=True):
     return data
 
 
+def _load_sims(sims, sep=" "):
+    """
+    Load simulations either from a dataframe or from a file.
+    """
+    if isinstance(sims, str):
+        sim_df = pd.read_csv(sims, sep=sep, header=0)
+    elif isinstance(sims, pd.DataFrame):
+        sim_df = sims
+    else:
+        raise PTAError("Input simulations not understood. Must be a file name or a pandas DataFrame")
+    return sim_df
+
+
 ## Error messages
 BAD_PARAMETER = """\
     Error setting parameter '{}'

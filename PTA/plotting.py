@@ -17,6 +17,10 @@ import subprocess
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import PowerTransformer, StandardScaler
 
+from PTA.inference import default_targets
+import PTA.util
+
+
 ## A dictionary mapping mModel parameters in params/SIMOUT file format
 ## to unicode/prettier versions for plotting
 ##
@@ -30,8 +34,6 @@ target_labels = {"zeta":"\u03B6",\
                 "ecological_strength":r"$s_E$",\
                 "J":r"$J$",\
                 "m":r"$m$"}
-
-from PTA.inference import default_targets
 
 
 def _filter_sims(sims,\
@@ -55,12 +57,8 @@ def _filter_sims(sims,\
         filtered and pruned simulation summary statistics.
     """
     ## Load the simulations
-    if isinstance(sims, str):
-        sim_df = pd.read_csv(sims, sep=" ", header=0)
-    elif isinstance(sims, pd.DataFrame):
-        sim_df = sims
-    else:
-        raise PTAError("Input simulations not understood. Must be a file name or a pandas DataFrame")
+    sim_df = PTA.util._load_sims(sims, sep=" ")
+
     ## Wether to select only specific timepoints bracketed by `tol` or
     ## just plot everything.
     if select is '':

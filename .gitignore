@@ -4,3 +4,4 @@ PTA/__pycache__/
 PTA/default_PTA/
 *pta_log.txt
 *params-*
+*.pyc

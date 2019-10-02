@@ -446,7 +446,7 @@ class DemographicModel(object):
         model = momi.DemographicModel(N_e=N_e)
         model.add_leaf(name)
         model.set_size(name, t=tau, N=N_e/epsilon)
-        sampled_n_dict={name:4}
+        sampled_n_dict={name:self.paramsdict["nsamps"]}
         if verbose: print(sampled_n_dict)
         ac = model.simulate_data(length=self.paramsdict["length"],
                                 num_replicates=self.paramsdict["num_replicates"],

@@ -83,9 +83,11 @@ class DemographicModel(object):
         ##  * sorted_sfs: Whether or not to sort the bins of the msfs
         ##  * allow_psi>1: Whether to allow multiple co-expansion events per simulation
         ##      or to fix it to 1. This is the msbayes vs pipemaster flag.
+        ##  * proportional_msfs: Scale counts within an sfs bin per population to sum to 1.
         self._hackersonly = dict([
                        ("sorted_sfs", False),
-                       ("allow_psi>1", True), 
+                       ("allow_psi>1", False), 
+                       ("proportional_msfs", False),
         ])
 
 
@@ -256,7 +258,7 @@ class DemographicModel(object):
                 ## empty and if writing out full, then write the prior, and not
                 ## the sampled value
                 if full:
-                    if key in list(self._priors.keys()):
+                    if key in list(self._priors.keys()) and self._priors[key]:
                         paramvalue = "-".join([str(i) for i in self._priors[key]])
 
                 padding = (" "*(20-len(paramvalue)))
@@ -275,6 +277,7 @@ class DemographicModel(object):
     ## Model functions/API
     ########################
     def _sample_tau(self, ntaus=1):
+        #if self.paramsdict
         return np.random.randint(1000, 50000, ntaus)
 
 
@@ -417,11 +420,11 @@ class DemographicModel(object):
                 for tidx, tau_pops in enumerate(pops_per_tau):
                     for pidx in range(tau_pops):
                         name = "pop{}-{}".format(tidx, pidx)
-                        sfs_list.append(self.get_sfs(name,
+                        sfs_list.append(self._simulate(name,
                                                 N_e=self._sample_Ne(),
                                                 tau=taus[tidx],
                                                 epsilon=epsilons[tidx]))
-                msfs = multiSFS(sfs_list)
+                msfs = multiSFS(sfs_list, proportions=self._hackersonly["proportional_msfs"])
                 msfs.set_params(pd.Series([zeta, psi, pops_per_tau, taus, epsilons],\
                                         index=["zeta", "psi", "pops_per_tau", "taus", "epsilons"]))
                 msfs_list.append(msfs)
@@ -438,7 +441,7 @@ class DemographicModel(object):
         return msfs_list
 
 
-    def get_sfs(self, name, N_e=1e6, tau=20000, epsilon=10, verbose=False):
+    def _simulate(self, name, N_e=1e6, tau=20000, epsilon=10, verbose=False):
         model = momi.DemographicModel(N_e=N_e)
         model.add_leaf(name)
         model.set_size(name, t=tau, N=N_e/epsilon)

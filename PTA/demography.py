@@ -153,7 +153,7 @@ class DemographicModel(object):
                 tup = tuplecheck(newvalue, dtype=int)
                 if isinstance(tup, tuple):
                     self._priors[param] = tup
-                    self.paramsdict[param] = sample_param_range(tup)[0]
+                    self.paramsdict[param] = tup
                 else:
                     self.paramsdict[param] = tup
 
@@ -204,12 +204,12 @@ class DemographicModel(object):
         :return: A string of all the params ready to be printed.
         """
         tf = tempfile.NamedTemporaryFile()
-        self.write_params(outfile=tf.name, full=True, force=True)
+        self.write_params(outfile=tf.name, force=True)
         dat = open(tf.name).read()
         return dat
 
 
-    def write_params(self, outfile=None, outdir=None, full=False, force=False):
+    def write_params(self, outfile=None, outdir=None, force=False):
         """
         Write out the parameters of this model to a file properly formatted as
         input for the PTA CLI. A good and simple way to share/archive 
@@ -220,9 +220,6 @@ class DemographicModel(object):
             specified this will default to `params-<Region.name>.txt`.
         :param string outdir: The directory to write the params file to. If not
             specified this will default to the project_dir.
-        :param bool full: Whether to write out only the parameters of the
-            specific parameter values of this Region, or to write out the
-            parameters including prior ranges for parameter values..
         :param bool force: Whether to overwrite if a file already exists.
         """
         if outfile is None:
@@ -252,14 +249,10 @@ class DemographicModel(object):
             ## get the short description from paramsinfo. Make it look pretty,
             ## pad nicely if at all possible.
             for key, val in self.paramsdict.items():
-                paramvalue = str(val)
-
-                ## If it's one of the params with a prior, and if the prior is not
-                ## empty and if writing out full, then write the prior, and not
-                ## the sampled value
-                if full:
-                    if key in list(self._priors.keys()) and self._priors[key]:
-                        paramvalue = "-".join([str(i) for i in self._priors[key]])
+                if isinstance(val, tuple):
+                    paramvalue = "-".join(map(str, val))
+                else:
+                    paramvalue = str(val)
 
                 padding = (" "*(20-len(paramvalue)))
                 paramkey = list(self.paramsdict.keys()).index(key)
@@ -277,12 +270,21 @@ class DemographicModel(object):
     ## Model functions/API
     ########################
     def _sample_tau(self, ntaus=1):
-        #if self.paramsdict
-        return np.random.randint(1000, 50000, ntaus)
+        tau = self.paramsdict["tau"]
+        if isinstance(tau, tuple):
+            tau = (tau[0], tau[1]+1)
+        else:
+            tau = (tau, tau+1)
+        return np.random.randint(tau[0], tau[1], ntaus)
 
 
     def _sample_epsilon(self, ntaus=1):
-        return np.random.randint(1, 20, ntaus)
+        eps = self.paramsdict["epsilon"]
+        if isinstance(eps, tuple):
+            eps = (eps[0], eps[1]+1)
+        else:
+            eps = (eps, eps+1)
+        return np.random.randint(eps[0], eps[1], ntaus)
 
 
     def _sample_zeta(self):

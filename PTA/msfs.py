@@ -1,11 +1,13 @@
 import numpy as np
 import pandas as pd
+from scipy.stats import entropy, kurtosis, iqr, skew
+
 
 class multiSFS(object):
-    def __init__(self, sfs_list):
+    def __init__(self, sfs_list, proportions=False):
         self.length = sfs_list[0].length
         self.ntaxa = len(sfs_list)
-        self.df = multiSFS.to_df(sfs_list)
+        self.df = multiSFS.to_df(sfs_list, proportions=proportions)
         self.config_array = self.df.index.values
         self.loc_counts = np.array([x.loc_counts for x in sfs_list])
         self.params = []
@@ -49,7 +51,26 @@ class multiSFS(object):
             outfile.write(self.to_string())
 
 
+    ## What's coming in is pd.Series([zeta, psi, pops_per_tau, taus, epsilons]
     def set_params(self, params):
+        self._full_params = params
+
+        ## Convenience apparatus to make calculating the moments easier
+        moments = {}
+        for name, func in zip(["mean", "std", "skewness", "kurtosis", "median", "iqr"],\
+                            [np.mean, np.std, skew, kurtosis, np.median, iqr]):
+            moments[name] = func
+
+        stat_dict = {}
+        ## For each list of values, rip through and calculate stats
+        for label, dat in zip(["pops_per_tau", "taus", "epsilons"],
+                                [self._full_params.pops_per_tau,\
+                                    self._full_params.taus,\
+                                    self._full_param.epsilons]):
+
+            for func_name, func in list(moments.items()):
+                stat_dict["{}_{}".format(label, func_name)] = func(dat)
+
         self.params = params
 
 

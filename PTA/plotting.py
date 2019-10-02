@@ -85,7 +85,7 @@ def _filter_sims(sims,\
 
 def plot_simulations_hist(sims,\
                         ax='',\
-                        figsize=(8, 8),\
+                        figsize=(12, 6),\
                         feature_set='',\
                         nsims=1000,\
                         bins=20,\
@@ -134,6 +134,7 @@ def plot_simulations_hist(sims,\
 
 def plot_simulations_pca(sims, ax='',\
                             figsize=(8, 8),\
+                            target='',\
                             feature_set='',\
                             loadings=False,\
                             nsims=1000,\
@@ -148,6 +149,7 @@ def plot_simulations_pca(sims, ax='',\
     :param str sims: 
     :param matplotlib.pyplot.axis ax:
     :param tuple figsize:
+    :param str target:
     :param list feature_set:
     :param bool loadings: BROKEN! Whether to plot the loadings in the figure.
     :param int nsims:
@@ -182,13 +184,19 @@ def plot_simulations_pca(sims, ax='',\
     pca = PCA(n_components=2)
     dat = pca.fit_transform(sim_df)
 
-    target = target_df["zeta"].values
-    ax.scatter(dat[:, 0], dat[:, 1], label=target_df["psi"], c=target)
+    if not target:
+        target = "zeta"
+    target_values = target_df[target].values
+    ax.scatter(dat[:, 0], dat[:, 1], label=target_df[target], c=target_values)
 
     ## Remove a bunch of visual noise
     ax.set_yticklabels([])
     ax.set_xticklabels([])
     ax.tick_params(top='off', bottom='off', left='off', right='off')
+
+    var_expl = pca.explained_variance_ratio_
+    ax.set_xlabel("Variance explained {:.3}%".format(var_expl[0]*100), fontsize=15)
+    ax.set_ylabel("Variance explained {:.3}%".format(var_expl[1]*100), fontsize=15)
 
     if title:
         ax.set_title(title)

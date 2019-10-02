@@ -69,13 +69,6 @@ class DemographicModel(object):
                        ("muts_per_gen", 1e-8)
         ])
 
-        ## A dictionary for holding prior ranges for values we're interested in
-        self._priors = dict([
-                        ("N_e", []),
-                        ("tau", []),
-                        ("epsilon", []),
-        ])
-
         ## Separator to use for reading/writing files
         self._sep = " "
 
@@ -152,10 +145,13 @@ class DemographicModel(object):
             elif param in ["N_e", "tau", "epsilon"]:
                 tup = tuplecheck(newvalue, dtype=int)
                 if isinstance(tup, tuple):
-                    self._priors[param] = tup
                     self.paramsdict[param] = tup
+                    if tup[0] <= 0:
+                        raise PTAError("{} values must be strictly > 0. You put {}".format(param, tup))
                 else:
                     self.paramsdict[param] = tup
+                    if tup <= 0:
+                        raise PTAError("{} values must be strictly > 0. You put {}".format(param, tup))
 
             elif param in ["npops", "nsamsp", "length", "num_replicates"]:
                 self.paramsdict[param] = int(newvalue)
@@ -269,6 +265,9 @@ class DemographicModel(object):
     ########################
     ## Model functions/API
     ########################
+
+    ## For sampling from priors, the draw comes from the half open interval
+    ## so for tau we add 1 to account for most people not thinking of this.
     def _sample_tau(self, ntaus=1):
         tau = self.paramsdict["tau"]
         if isinstance(tau, tuple):
@@ -284,7 +283,7 @@ class DemographicModel(object):
             eps = (eps[0], eps[1]+1)
         else:
             eps = (eps, eps+1)
-        return np.random.randint(eps[0], eps[1], ntaus)
+        return np.random.uniform(eps[0], eps[1], ntaus)
 
 
     def _sample_zeta(self):

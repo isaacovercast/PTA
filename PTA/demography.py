@@ -278,12 +278,12 @@ class DemographicModel(object):
         return np.random.randint(tau[0], tau[1], ntaus)
 
 
-    def _sample_epsilon(self, ntaus=1):
+    def _sample_epsilon(self, nsamps=1):
         eps = self.paramsdict["epsilon"]
         if isinstance(eps, tuple):
-            eps = np.random.uniform(eps[0], eps[1], ntaus)
+            eps = np.random.uniform(eps[0], eps[1], nsamps)
         else:
-            eps = np.array([eps] * ntaus)
+            eps = np.array([eps] * nsamps)
         return eps
 
 
@@ -297,13 +297,13 @@ class DemographicModel(object):
             zeta = np.random.uniform()
         return zeta
 
-    def _sample_Ne(self):
-        N_e = 0
-        if isinstance(self.paramsdict["N_e"], tuple):
-            min_Ne, max_Ne = self.paramsdict["N_e"]
-            N_e = np.random.randint(min_Ne, max_Ne+1)
+
+    def _sample_Ne(self, nsamps=1):
+        N_e = self.paramsdict["N_e"]
+        if isinstance(N_e, tuple):
+            N_e = np.random.randint(N_e[0], N_e[1]+1, nsamps)
         else:
-            N_e = self.paramsdict["N_e"]
+            N_e = np.array([N_e] * nsamps)
         return N_e
 
 
@@ -418,12 +418,13 @@ class DemographicModel(object):
                 LOGGER.debug("sim {} - zeta {} - psi {} - pops_per_tau{}".format(i, zeta, psi, pops_per_tau))
                 taus = self._sample_tau(ntaus=len(pops_per_tau))
                 epsilons = self._sample_epsilon(len(pops_per_tau))
+                N_es = self._sample_Ne(self.paramsdict["npops"])
                 sfs_list = []
                 for tidx, tau_pops in enumerate(pops_per_tau):
                     for pidx in range(tau_pops):
                         name = "pop{}-{}".format(tidx, pidx)
                         sfs_list.append(self._simulate(name,
-                                                N_e=self._sample_Ne(),
+                                                N_e=N_es[i],
                                                 tau=taus[tidx],
                                                 epsilon=epsilons[tidx]))
                 msfs = multiSFS(sfs_list, proportions=self._hackersonly["proportional_msfs"])
@@ -431,8 +432,8 @@ class DemographicModel(object):
                 ## In the pipe_master model the first tau in the list is the co-expansion time
                 ## If/when you get around to doing the msbayes model of multiple coexpansion
                 ## pulses, then this will have to change 
-                msfs.set_params(pd.Series([zeta, psi, taus[0], pops_per_tau, taus, epsilons],\
-                                        index=["zeta", "psi", "t_s", "pops_per_tau", "taus", "epsilons"]))
+                msfs.set_params(pd.Series([zeta, psi, taus[0], pops_per_tau, taus, epsilons, N_es],\
+                                        index=["zeta", "psi", "t_s", "pops_per_tau", "taus", "epsilons", "N_es"]))
                 msfs_list.append(msfs)
 
             except KeyboardInterrupt as inst:

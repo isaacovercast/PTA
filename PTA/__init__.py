@@ -1,7 +1,7 @@
 """
 PTA - Phylogeographic Temporal Analysis
 """
-__version__ = "0.0.9"
+__version__ = "0.0.10"
 __author__ = "Isaac Overcast"
 
 ## Possible values for __loglevel__: "DEBUG"  "INFO"  "WARN"  "ERROR"

@@ -60,12 +60,28 @@ class multiSFS(object):
                             [np.mean, np.std, skew, kurtosis, np.median, iqr]):
             moments[name] = func
 
-        stat_dict = OrderedDict({"zeta":params["zeta"], "psi":params["psi"]})
+        stat_dict = OrderedDict({"zeta":params["zeta"],\
+                                "psi":params["psi"],\
+                                "t_s":params["t_s"]})
+
+        ## Handle taus with no variance and set omega to 0
+        if not params["taus"].var():
+            omega = 0
+        else:
+            omega = params["taus"].mean()/params["taus"].var()
+        stat_dict["omega"] = omega
+
         ## For each list of values, rip through and calculate stats
         for label, dat in zip(["pops_per_tau", "taus", "epsilons"],
                                 [self._full_params.pops_per_tau,\
                                     self._full_params.taus,\
                                     self._full_params.epsilons]):
+
+            ## I'm going to just mask out the pops_per_tau stats for now
+            ## as for the initial stage of development we'll focus on the
+            ## pipe_master model, of one pulse of co-expansion.
+            if label == "pops_per_tau":
+                continue
 
             for func_name, func in list(moments.items()):
                 stat_dict["{}_{}".format(label, func_name)] = func(dat)

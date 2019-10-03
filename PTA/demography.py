@@ -397,7 +397,6 @@ class DemographicModel(object):
         import pandas as pd
         npops = self.paramsdict["npops"]
     
-        param_df = pd.DataFrame([], columns=["zeta", "psi", "pops_per_tau", "taus", "epsilons"])
         msfs_list = []
 
         printstr = " Performing Simulations    | {} |"
@@ -412,7 +411,6 @@ class DemographicModel(object):
                 LOGGER.debug("sim {} - zeta {} - psi {} - pops_per_tau{}".format(i, zeta, psi, pops_per_tau))
                 taus = self._sample_tau(ntaus=len(pops_per_tau))
                 epsilons = self._sample_epsilon(len(pops_per_tau))
-                param_df.loc[i] = [zeta, psi, pops_per_tau, taus, epsilons]
                 sfs_list = []
                 for tidx, tau_pops in enumerate(pops_per_tau):
                     for pidx in range(tau_pops):
@@ -422,8 +420,12 @@ class DemographicModel(object):
                                                 tau=taus[tidx],
                                                 epsilon=epsilons[tidx]))
                 msfs = multiSFS(sfs_list, proportions=self._hackersonly["proportional_msfs"])
-                msfs.set_params(pd.Series([zeta, psi, pops_per_tau, taus, epsilons],\
-                                        index=["zeta", "psi", "pops_per_tau", "taus", "epsilons"]))
+
+                ## In the pipe_master model the first tau in the list is the co-expansion time
+                ## If/when you get around to doing the msbayes model of multiple coexpansion
+                ## pulses, then this will have to change 
+                msfs.set_params(pd.Series([zeta, psi, taus[0], pops_per_tau, taus, epsilons],\
+                                        index=["zeta", "psi", "t_s", "pops_per_tau", "taus", "epsilons"]))
                 msfs_list.append(msfs)
 
             except KeyboardInterrupt as inst:

@@ -78,10 +78,14 @@ class DemographicModel(object):
         ##  * allow_psi>1: Whether to allow multiple co-expansion events per simulation
         ##      or to fix it to 1. This is the msbayes vs pipemaster flag.
         ##  * proportional_msfs: Scale counts within an sfs bin per population to sum to 1.
+        ##  * mu_variance: If this parameter is > 0, then mu will be sampled from a zero-
+        ##      truncated normal distribution with mean `muts_per_gen` and variance
+        ##      `mu_variance`. If 0, then `muts_per_gen` is a fixed global mutation rate.
         self._hackersonly = dict([
                        ("sorted_sfs", False),
                        ("allow_psi>1", False), 
                        ("proportional_msfs", False),
+                       ("mu_variance", 0),
         ])
 
 
@@ -307,6 +311,22 @@ class DemographicModel(object):
         return N_e
 
 
+    def _sample_mu(self):
+        """
+        Sample mu from a zero-truncated normal distribution, if mu_var is
+        specified, otherwise use fixed, global mu. If you set the mu_variance
+        too high and you get a very small value, or zero, then the simulation
+        will die and it'll raise a PTAError.
+        """
+        mu = self.paramsdict["muts_per_gen"]
+        mu_var = self._hackersonly["mu_variance"]
+        if mu_var:
+            mu = np.random.normal(mu, mu_var)
+            if mu < 0:
+                mu = 0
+        return mu
+
+
     def get_pops_per_tau(self, zeta):
 
         # Get effective # of coexpanding taxa
@@ -457,9 +477,17 @@ class DemographicModel(object):
         ac = model.simulate_data(length=self.paramsdict["length"],
                                 num_replicates=self.paramsdict["num_replicates"],
                                 recoms_per_gen=self.paramsdict["recoms_per_gen"],
-                                muts_per_gen=self.paramsdict["muts_per_gen"],
+                                muts_per_gen=self._sample_mu(),
                                 sampled_n_dict=sampled_n_dict)
-        return ac.extract_sfs(n_blocks=1)
+        try:
+            sfs = ac.extract_sfs(n_blocks=1)
+        except ValueError:
+            ## If _sample_mu() returns zero, or a very small value with respect to
+            ## sequence length, Ne, and tau, then you can get a case where there
+            ## are no snps in the data, and constructing the sfs freaks.
+            raise PTAError("Can't extract SFS from a simulation with no variation. Check that muts_per_gen looks reasonable.")
+
+        return sfs
 
     
     def simulate(self, nsims=1, ipyclient=None, quiet=False, verbose=False, force=False):

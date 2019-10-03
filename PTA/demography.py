@@ -82,7 +82,7 @@ class DemographicModel(object):
         ##      truncated normal distribution with mean `muts_per_gen` and variance
         ##      `mu_variance`. If 0, then `muts_per_gen` is a fixed global mutation rate.
         self._hackersonly = dict([
-                       ("sorted_sfs", False),
+                       ("sorted_sfs", True),
                        ("allow_psi>1", False), 
                        ("proportional_msfs", False),
                        ("mu_variance", 0),

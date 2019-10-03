@@ -36,7 +36,10 @@ import PTA.plotting
 ## kind of a moving target. Do something smarter here.
 ## NB: This is referenced in the plotting module, so whatever you do you have
 ## to fix it there too.
-default_targets = ["zeta", "psi"]
+default_targets = ['zeta', 'psi', 't_s', 'omega', 'taus_mean', 'taus_std',\
+                    'taus_skewness', 'taus_kurtosis', 'taus_median', 'taus_iqr',\
+                    'epsilons_mean', 'epsilons_std', 'epsilons_skewness',\
+                    'epsilons_kurtosis', 'epsilons_median', 'epsilons_iqr']
 
 class Ensemble(object):
     """
@@ -66,14 +69,15 @@ class Ensemble(object):
             ## and prune the features to correspond to the loaded empirical data
             self.sim_df = PTA.util._load_sims(sims)
 
-            ## Find the last parameter in the params list and split to features
-            ## and targets here. We're keeping all features and targets in the
+            ## Split the simulations to features and targets. rn only using the
+            ## msfs bins as the features, so keeping only cols that start with
+            ## pop*. We're keeping all features and targets in the
             ## _X and _y variables, and can selectively prune them later
-            ## NB: the +1 splits on the column _after_ the last target,
-            ## which is what we want.
-            idx = list(self.sim_df.columns).index(default_targets[-1])+1
-            self._X = self.sim_df.iloc[:, idx:]
-            self._y = self.sim_df.iloc[:, :idx]
+            ## NB: There's probably a better way to do this, but oh well..
+            sfs_cols = [col for col in self.sim_df.columns if col.startswith("pop")]
+            params_cols = [col for col in self.sim_df.columns if col not in sfs_cols]
+            self._X = self.sim_df[sfs_cols]
+            self._y = self.sim_df[params_cols]
         except Exception as inst:
             print("  Failed loading simulations file: {}".format(inst))
             raise
@@ -83,6 +87,10 @@ class Ensemble(object):
         self.set_targets()
         ## Set features to correspond to real data. Trims self.X to only
         ## the features necessary, leaves self._X intact.
+        ##
+        ## TODO: This maybe isn't the best strategy, as the empirical data
+        ## may not have configs in the simulations, and these should be included
+        ## in the empirical data and zero'd out.
         self.set_features(self.empirical_sumstats.columns)
 
         ## If you want to estimate parameters independently then
@@ -990,7 +998,6 @@ class Regressor(Ensemble):
         ## Allow user to specify which of the targets to plot
         if not targets:
             targets = self.targets
-
         for t, ax in zip(targets, axs):
             self._plot_cv_prediction(t, ax, n_cvs=n_cvs)
 
@@ -1034,8 +1041,12 @@ class Regressor(Ensemble):
             xs = np.linspace(min(xmin, ymin), max(xmax, ymax), 100)
             ax.plot(xs, xs, c='red')
 
-        ax.set_title(PTA.plotting.target_labels[target], fontsize=25)
-
+        try:
+            ax.set_title(PTA.plotting.target_labels[target], fontsize=25)
+        except:
+            ## Just fall back to using the target name if no pretty figure label
+            ## TODO: Make pretty figure labels for each target.
+            ax.set_title(target, fontsize=25)
 
 #############################
 ## Module methods
@@ -1139,7 +1150,7 @@ def parameter_estimation_cv(sims, sep=" ", data_axes='',
 
     sim_df = PTA.util._load_sims(sims, sep=sep)
 
-    ## A little trick to peel off one simulatoin just so we can create the cla
+    ## A little trick to peel off one simulation just so we can create the cla
     synthetic_community = pd.DataFrame(sim_df.loc[0]).T.drop(default_targets, axis=1)
     tmp_df = sim_df.drop([0])
 

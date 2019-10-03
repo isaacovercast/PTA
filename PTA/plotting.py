@@ -76,9 +76,12 @@ def _filter_sims(sims,\
     sim_df = sim_df[:nsims]
 
     ## Remove invariant targets (save time)
-    sim_df = sim_df.loc[:, (sim_df != sim_df.iloc[0]).any()]
-    retained = list(sim_df.columns)
-    if verbose: print("Removed invariant targets. Retained: {}".format(list(retained)))
+    ## TODO: Removing invariant targets doesn't remove the keys from
+    ## the janky 'default_targets' global thing we're doing rn. It's
+    ## a convenience, so doesn't matter that much.
+    #sim_df = sim_df.loc[:, (sim_df != sim_df.iloc[0]).any()]
+    #retained = list(sim_df.columns)
+    #if verbose: print("Removed invariant targets. Retained: {}".format(list(retained)))
 
     return sim_df
 

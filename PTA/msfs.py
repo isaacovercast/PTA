@@ -5,10 +5,10 @@ from collections import OrderedDict
 
 
 class multiSFS(object):
-    def __init__(self, sfs_list, proportions=False):
+    def __init__(self, sfs_list, sort=False, proportions=False):
         self.length = sfs_list[0].length
         self.ntaxa = len(sfs_list)
-        self.df = multiSFS.to_df(sfs_list, proportions=proportions)
+        self.df = multiSFS.to_df(sfs_list, sort=sort, proportions=proportions)
         self.config_array = self.df.index.values
         self.loc_counts = np.array([x.loc_counts for x in sfs_list])
         self.stats = pd.Series()
@@ -19,7 +19,14 @@ class multiSFS(object):
 
     ## This piece of trash method cost me several hours to figure out.
     @staticmethod
-    def to_df(sfslist, proportions=False):
+    def to_df(sfslist, sort=False, proportions=False):
+        """
+        The primary method for generating a multiSFS. It gets passed a list
+        of momi style sfs objects and generates the PTA.multiSFS format.
+
+        :param sort bool: Whether to sort the bins of the msfs. Default is False.
+        :param proportions bool: Whether to rescale the bins so the sum to 1.
+        """
         dtype = np.uint32
         sfs_dict = {}
         for i, sfs in enumerate(sfslist):
@@ -29,8 +36,10 @@ class multiSFS(object):
                 dtype = np.float32
             tmp_ca = sfs.config_array
             sfs_dict["pop{}".format(i)] = {np.array2string(x).replace(" ", "_"):y for x, y in zip(tmp_ca, tmp_lc)}
-        return pd.DataFrame(sfs_dict).fillna(0).astype(dtype)
-
+        msfs = pd.DataFrame(sfs_dict).fillna(0).astype(dtype)
+        if sort:
+            msfs = msfs.apply(sorted, reverse=True, axis=1)
+        return msfs
 
     ## Series will be alpha-sorted, so the order of the bins will be:
     ## pop1-cfg1 pop1-cfg2 pop1-cfg3 pop2-cfg1 pop2-cfg2 pop2-cfg3 ...
@@ -42,7 +51,7 @@ class multiSFS(object):
 
     def to_string(self, sep=" "):
         dat = self.to_dataframe().to_csv(header=False, index=False, sep=sep, line_terminator="")
-        return sep.join(dat)
+        return dat
 
 
     def dump(self, file):

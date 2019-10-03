@@ -447,7 +447,9 @@ class DemographicModel(object):
                                                 N_e=N_es[i],
                                                 tau=taus[tidx],
                                                 epsilon=epsilons[tidx]))
-                msfs = multiSFS(sfs_list, proportions=self._hackersonly["proportional_msfs"])
+                msfs = multiSFS(sfs_list,\
+                                sort=self._hackersonly["sorted_sfs"],\
+                                proportions=self._hackersonly["proportional_msfs"])
 
                 ## In the pipe_master model the first tau in the list is the co-expansion time
                 ## If/when you get around to doing the msbayes model of multiple coexpansion

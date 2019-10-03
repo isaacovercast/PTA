@@ -375,7 +375,6 @@ class DemographicModel(object):
         if not quiet: progressbar(100, 100, " Finished {} simulations in   {}\n".format(i+1, elapsed))
 
         faildict = {}
-        passdict = {}
         param_df = pd.DataFrame()
         msfs_list = []
         ## Gather results
@@ -384,10 +383,7 @@ class DemographicModel(object):
                 if not parallel_jobs[result].successful():
                     faildict[result] = parallel_jobs[result].metadata.error
                 else:
-                    passdict[result] = parallel_jobs[result].result()
-                    m_list = passdict[result]
-                    #param_df = pd.concat([param_df, p_df], axis=1)
-                    msfs_list.extend(m_list)
+                    msfs_list.extend(parallel_jobs[result].result())
             except Exception as inst:
                 LOGGER.error("Caught a failed simulation - {}".format(inst))
                 ## Don't let one bad apple spoin the bunch,
@@ -505,7 +501,7 @@ class DemographicModel(object):
         except FileNotFoundError:
             dat = pd.DataFrame()
 
-        msfs_df = pd.DataFrame(list(map(lambda x: x.to_series(), msfs_list)))
+        msfs_df = pd.DataFrame(pd.concat([x.to_dataframe() for x in msfs_list])).fillna(0)
         dat = pd.concat([dat, msfs_df])
         dat.to_csv(simfile, header=True, index=False, sep=self._sep, float_format='%.3f')
 

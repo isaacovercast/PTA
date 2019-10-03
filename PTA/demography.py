@@ -281,10 +281,10 @@ class DemographicModel(object):
     def _sample_epsilon(self, ntaus=1):
         eps = self.paramsdict["epsilon"]
         if isinstance(eps, tuple):
-            eps = (eps[0], eps[1]+1)
+            eps = np.random.uniform(eps[0], eps[1], ntaus)
         else:
-            eps = (eps, eps+1)
-        return np.random.uniform(eps[0], eps[1], ntaus)
+            eps = np.array([eps] * ntaus)
+        return eps
 
 
     def _sample_zeta(self):

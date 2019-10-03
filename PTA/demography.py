@@ -63,6 +63,7 @@ class DemographicModel(object):
                        ("N_e", 10000),
                        ("tau", 20000),
                        ("epsilon", 10),
+                       ("zeta", 0),
                        ("length", 1000),
                        ("num_replicates", 100),
                        ("recoms_per_gen", 1e-9),
@@ -155,7 +156,7 @@ class DemographicModel(object):
 
             elif param in ["npops", "nsamsp", "length", "num_replicates"]:
                 self.paramsdict[param] = int(newvalue)
-            elif param in ["recoms_per_gen", "muts_per_gen"]:
+            elif param in ["recoms_per_gen", "muts_per_gen", "zeta"]:
                 self.paramsdict[param] = float(newvalue)
             else:
                 self.paramsdict[param] = newvalue
@@ -287,8 +288,14 @@ class DemographicModel(object):
 
 
     def _sample_zeta(self):
-        return np.random.uniform()
-
+        """
+        If zeta is specified in the params dict, then just use this value. If zeta
+        is zero (the default), then sample a random value between [0, 1).
+        """
+        zeta = self.paramsdict["zeta"]
+        if not zeta:
+            zeta = np.random.uniform()
+        return zeta
 
     def _sample_Ne(self):
         N_e = 0
@@ -568,9 +575,10 @@ PARAMS = {
     "N_e" : "Effective population size of the ancestral population",\
     "tau" : "Time of demographic change",\
     "epsilon" : "Magnitude of demographic change",\
-    "length" : "Length in bp of each indpendent genomic region to simulate",
-    "num_replicates" : "Number of genomic regions to simulate",
-    "recoms_per_gen" : "Recombination rate within independent regions scaled per base per generation",
+    "zeta" : "Proportion of coexpanding taxa. Default will sample U~(0, 1)",\
+    "length" : "Length in bp of each indpendent genomic region to simulate",\
+    "num_replicates" : "Number of genomic regions to simulate",\
+    "recoms_per_gen" : "Recombination rate within independent regions scaled per base per generation",\
     "muts_per_gen" : "Mutation rate scaled per base per generation",\
 }
 

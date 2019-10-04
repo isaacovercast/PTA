@@ -193,7 +193,7 @@ def plot_simulations_pca(sims, ax='',\
     target_values = target_df[target].values
     sc = ax.scatter(dat[:, 0], dat[:, 1], label=target_df[target], c=target_values)
 
-    if colorbar
+    if colorbar:
         plt.colorbar(sc)
 
     ## Remove a bunch of visual noise

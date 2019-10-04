@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import pandas as pd
 from scipy.stats import entropy, kurtosis, iqr, skew
 from collections import OrderedDict
@@ -54,9 +55,35 @@ class multiSFS(object):
         return dat
 
 
-    def dump(self, file):
-        with open(file, 'a+') as outfile:
+    def dump(self, outdir="", out="", full=False):
+        """
+        """
+        if not outdir:
+            outdir = "./"
+        if not out:
+            out = "output.msfs"
+
+        if not os.path.exists(outdir):
+            os.mkdir(outdir)
+
+        with open(os.path.join(outdir, out), 'a+') as outfile:
             outfile.write(self.to_string())
+
+        if full:
+            outdir = os.path.join(outdir, "sfs_dir")
+            if not os.path.exists(outdir):
+                os.mkdir(outdir)
+            for sfs in self.sfslist:
+                sfs.dump(os.path.join(outdir, "{}.sfs".format(sfs.populations[0])))
+
+
+    ## TODO: Do stuff here.
+    @staticmethod
+    def load(file):
+        """
+        Would be convenient to have a load method as well.
+        """
+        pass
 
 
     ## What's coming in is pd.Series([zeta, psi, pops_per_tau, taus, epsilons]

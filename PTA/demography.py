@@ -1,4 +1,5 @@
 import datetime
+import json
 import logging
 import momi
 import numpy as np
@@ -73,6 +74,12 @@ class DemographicModel(object):
         ## Separator to use for reading/writing files
         self._sep = " "
 
+        ## A dictionary for storing taxon specific information. This dictionary
+        ## is populated when empirical data is loaded. If no per taxon info
+        ## is present then we sample from the priors as specified in the params
+        ## file.
+        self.taxa = {}
+
         ## elite hackers only internal dictionary, normally you shouldn't mess with this
         ##  * sorted_sfs: Whether or not to sort the bins of the msfs
         ##  * allow_psi>1: Whether to allow multiple co-expansion events per simulation
@@ -140,12 +147,12 @@ class DemographicModel(object):
             if param == "project_dir":
                 ## If it already exists then just inform the user that we'll be adding
                 ## more simulations to the current project directory
-                self.paramsdict[param] = newvalue
+                if " " in newvalue:
+                    raise PTAError("`project_dir` may not contain spaces. You put:\n{}".format(newvalue))
+                self.paramsdict[param] = os.path.realpath(os.path.expanduser(newvalue))
+
                 if not os.path.exists(self.paramsdict["project_dir"]):
                     os.mkdir(self.paramsdict["project_dir"])
-                else:
-                    if not quiet:
-                        print("  Project directory exists. Additional simulations will be appended.")
             
             elif param in ["N_e", "tau", "epsilon"]:
                 tup = tuplecheck(newvalue, dtype=int)
@@ -265,6 +272,61 @@ class DemographicModel(object):
                                         paramindex + name + description)
 
             paramsfile.write("\n")
+
+
+    def save(self):
+        _save_json(self)
+
+
+    @staticmethod
+    def load(json_path, quiet=False):
+        """
+        Load a json serialized object and ensure it matches to the current model format.
+        """
+        # expand HOME in JSON path name
+        json_path = json_path.replace("~", os.path.expanduser("~"))
+
+        # raise error if JSON not found
+        if not os.path.exists(json_path):
+            raise PTAError("""
+                Could not find saved model file (.json) in expected location.
+                Checks in: [project_dir]/[assembly_name].json
+                Checked: {}
+                """.format(json_path))
+
+        # load JSON file
+        with open(json_path, 'rb') as infile:
+            fullj = json.loads(infile.read(), object_hook=_tup_and_byte)
+
+        # get name and project_dir from loaded JSON
+        oldname = fullj["model"].pop("name")
+        olddir = fullj["model"]["paramsdict"]["project_dir"]
+        oldpath = os.path.join(olddir, os.path.splitext(oldname)[0] + ".json")
+
+        # create a fresh new Assembly
+        null = PTA.DemographicModel(oldname, quiet=True)
+
+        # print Loading message with shortened path
+        if not quiet:
+            oldpath = oldpath.replace(os.path.expanduser("~"), "~")
+            print("  loading DemographicModel: {}".format(oldname))
+            print("  from saved path: {}".format(oldpath))
+
+        ## get the taxa. Create empty sample dict of correct length
+        taxakeys = fullj["model"].pop("taxa")
+        null.taxa = {name:"" for name in taxakeys}
+
+        ## Set params
+        oldparams = fullj["model"].pop("paramsdict")
+        for param, value in oldparams.items():
+            null.set_param(param, value)
+
+        oldhackersonly = fullj["model"].pop("_hackersonly")
+        null._hackersonly = oldhackersonly
+
+        taxon_names = list(fullj["taxa"].keys())
+
+        return null
 
 
     ########################
@@ -593,6 +655,124 @@ def serial_simulate(model, nsims=1, quiet=False, verbose=False):
     return res
 
 
+##########################################
+## Saving functions to dump model to json
+## This is all ripped directly from ipyrad
+## with minor modifications.
+##########################################
+
+class _Encoder(json.JSONEncoder):
+    """
+    Save JSON string with tuples embedded as described in stackoverflow
+    thread. Modified here to include dictionary values as tuples.
+    link: http://stackoverflow.com/questions/15721363/
+
+    This Encoder Class is used as the 'cls' argument to json.dumps()
+    """
+    def encode(self, obj):
+        """ function to encode json string"""
+        def hint_tuples(item):
+            """ embeds __tuple__ hinter in json strings """
+            if isinstance(item, tuple):
+                return {'__tuple__': True, 'items': item}
+            if isinstance(item, list):
+                return [hint_tuples(e) for e in item]
+            if isinstance(item, dict):
+                return {
+                    key: hint_tuples(val) for key, val in item.items()
+                }
+            else:
+                return item
+        return super(_Encoder, self).encode(hint_tuples(obj))
+
+
+def _default(o):
+    print(o)
+    # https://stackoverflow.com/questions/11942364/
+    # typeerror-integer-is-not-json-serializable-when-
+    # serializing-json-in-python?utm_medium=organic&utm_
+    # source=google_rich_qa&utm_campaign=google_rich_qa
+    if isinstance(o, np.int64):
+        return int(o)
+    raise TypeError
+
+
+def _tup_and_byte(obj):
+    """ this is used in loading """
+
+    # convert all strings to bytes
+    if isinstance(obj, (bytes)):
+        return obj.decode()  # encode('utf-8')
+        #return obj.encode('utf-8')
+
+    # if this is a list of values, return list of byteified values
+    if isinstance(obj, list):
+        return [_tup_and_byte(item) for item in obj]
+
+    # if this is a dictionary, return dictionary of byteified keys and values
+    # but only if we haven't already byteified it
+    if isinstance(obj, dict):
+        if "__tuple__" in obj:
+            return tuple(_tup_and_byte(item) for item in obj["items"])
+        else:
+            return {
+                _tup_and_byte(key): _tup_and_byte(val) for
+                key, val in obj.items()
+                }
+
+    # if it's anything else, return it in its original form
+    return obj
+
+
+def _save_json(data):
+    """
+    Save assembly and samples as json
+    ## data as dict
+    #### samples save only keys
+    """
+    # store params without the reference to Assembly object in params
+    paramsdict = {i: j for (i, j) in data.paramsdict.items() if i != "_data"}
+
+    # store all other dicts
+    datadict = OrderedDict([\
+        ("name", data.name),\
+        ("__version__", data._version),\
+        ("paramsdict", paramsdict),\
+        ("taxa", list(data.taxa.keys())),\
+        ("_hackersonly", data._hackersonly)\
+    ])
+
+    ## sample dict
+    taxadict = OrderedDict([])
+    for key, taxon in data.taxa.items():
+        taxadict[key] = taxon._to_fulldict()
+
+    ## json format it using cumstom Encoder class
+    fulldumps = json.dumps({
+        "model": datadict,
+        "taxa": taxadict
+    },
+        cls=_Encoder,
+        sort_keys=False, indent=4, separators=(",", ":"),
+        default=_default,
+    )
+
+    ## save to file
+    modelpath = os.path.join(data.paramsdict["project_dir"],\
+                                data.name + ".json")
+    if not os.path.exists(data.paramsdict["project_dir"]):
+        os.mkdir(data.paramsdict["project_dir"])
+
+    ## protect save from interruption
+    done = 0
+    while not done:
+        try:
+            with open(modelpath, 'w') as jout:
+                jout.write(fulldumps)
+            done = 1
+        except (KeyboardInterrupt, SystemExit):
+            print('.')
+            continue
 
 
 #############################

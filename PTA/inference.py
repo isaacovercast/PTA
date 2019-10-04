@@ -1142,7 +1142,7 @@ def parameter_estimation_cv(sims, sep=" ", data_axes='',
     :param bool quick: Whether to run fast but do a bad job.
     :param bool verbose: Whether to print progress information.
 
-    :return: Returns the trained `MESS.inference.Regressor` with the cross-
+    :return: Returns the trained `PTA.inference.Regressor` with the cross-
         validation predictions for each simulation in the `cv_preds` member
         variable and the cross-validation scores per K-fold in the `cv_scores`
         member variable.
@@ -1195,7 +1195,7 @@ def posterior_predictive_check(empirical_df,\
     Currently not working.
 
     Perform posterior predictive simulations. This function will take
-    parameter estimates and perform MESS simulations using these parameter
+    parameter estimates and perform PTA simulations using these parameter
     values. It will then plot the resulting summary statistics in PC
     space, along with the summary statistics of the observed data. The
     logic of posterior predictive checks is that if the estimated parameters
@@ -1205,7 +1205,7 @@ def posterior_predictive_check(empirical_df,\
     :param pandas.DataFrame empirical_df: A DataFrame containing the empirical
         data. This df has a very specific format which is documented here.
     :param pandas.DataFrame parameter_estimates: A DataFrame containing the
-        the parameter estimates from a MESS.inference.Regressor.predict() call
+        the parameter estimates from a PTA.inference.Regressor.predict() call
         and optional prediction interval upper and lower bounds.
     :param bool ax: The matplotlib axis to use for plotting. If not specified
         then a new axis will be created.
@@ -1240,7 +1240,7 @@ def posterior_predictive_check(empirical_df,\
             print("New simulations will be appended to SIMOUT.txt in './ppc'. "\
                 + "Use `force=True` to overwrite.")
 
-    r = MESS.Region("ppc")
+    r = PTA.DemographicModel("ppc")
     r.set_param("project_dir", "./ppc")
 
     for param in parameter_estimates:

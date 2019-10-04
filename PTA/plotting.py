@@ -145,6 +145,7 @@ def plot_simulations_pca(sims, ax='',\
                             tol='',\
                             title='',\
                             outfile='',\
+                            colorbar=True,\
                             verbose=False):
     """
     Plot summary statistics for simulations projected into PC space.
@@ -190,7 +191,10 @@ def plot_simulations_pca(sims, ax='',\
     if not target:
         target = "zeta"
     target_values = target_df[target].values
-    ax.scatter(dat[:, 0], dat[:, 1], label=target_df[target], c=target_values)
+    sc = ax.scatter(dat[:, 0], dat[:, 1], label=target_df[target], c=target_values)
+
+    if colorbar
+        plt.colorbar(sc)
 
     ## Remove a bunch of visual noise
     ax.set_yticklabels([])

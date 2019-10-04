@@ -14,7 +14,7 @@ LOGGER = logging.getLogger(__name__)
 
 ## Custom exception class
 class PTAError(Exception):
-    """ General MESS exception """
+    """ General PTA exception """
     def __init__(self, *args, **kwargs):
         Exception.__init__(self, *args, **kwargs)
 
@@ -102,7 +102,7 @@ def tuplecheck(newvalue, dtype=str):
         try:
             newvalue = tuple(newvalue)
         except TypeError:
-            raise MESSError("tuplecheck failed for {}, improper list format".format(newvalue))
+            raise PTAError("tuplecheck failed for {}, improper list format".format(newvalue))
     else:
         try:
             ## If it's just one value of the proper dtype this should
@@ -120,7 +120,7 @@ def tuplecheck(newvalue, dtype=str):
                 maxval = dtype(float(newvalue.split("-")[1].strip()))
                 newvalue = tuple([minval, maxval])
             except Exception as inst:
-                raise MESSError("{}\ttuplecheck() failed to cast to {} - {}"\
+                raise PTAError("{}\ttuplecheck() failed to cast to {} - {}"\
                             .format(inst, dtype, newvalue))
 
     LOGGER.debug("Returning {} - {}".format(type(newvalue), newvalue))
@@ -150,12 +150,12 @@ def set_params(data, param, newvalue, quiet=True):
     #allowed_params = list(data.paramsdict.keys())
     ## require parameter recognition
     if not param in list(data.paramsdict.keys()):
-        raise MESSError("Parameter key not recognized: {}"\
+        raise PTAError("Parameter key not recognized: {}"\
                                 .format(param))
     try:
         data._paramschecker(param, newvalue, quiet)
     except Exception as inst:
-        raise MESSError(BAD_PARAMETER.format(param, inst, newvalue))
+        raise PTAError(BAD_PARAMETER.format(param, inst, newvalue))
     return data
 
 

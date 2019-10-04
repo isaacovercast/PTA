@@ -95,6 +95,9 @@ class DemographicModel(object):
                        ("mu_variance", 0),
         ])
 
+        ## The empirical msfs
+        self.empirical_msfs = ""
+
 
     #########################
     ## Housekeeping functions
@@ -312,9 +315,9 @@ class DemographicModel(object):
             print("  loading DemographicModel: {}".format(oldname))
             print("  from saved path: {}".format(oldpath))
 
-        ## get the taxa. Create empty sample dict of correct length
-        taxakeys = fullj["model"].pop("taxa")
-        null.taxa = {name:"" for name in taxakeys}
+        ## get the taxa. Create empty taxa dict of correct length
+        taxa = fullj["model"].pop("taxa")
+        null.taxa = taxa
 
         ## Set params
         oldparams = fullj["model"].pop("paramsdict")
@@ -324,10 +327,20 @@ class DemographicModel(object):
         oldhackersonly = fullj["model"].pop("_hackersonly")
         null._hackersonly = oldhackersonly
 
+        null._sep = fullj["model"].pop("_sep")
+        null.empirical_msfs = fullj["model"].pop("empirical_msfs")
+
         taxon_names = list(fullj["taxa"].keys())
 
         return null
 
+
+    def load_empirical(inpath):
+        """
+        Load in empirical data, either from a stored msfs or from a directory
+        of individual momi-style sfs which have been dumped to file.
+        """
+        pass
 
     ########################
     ## Model functions/API
@@ -724,7 +737,7 @@ def _tup_and_byte(obj):
     return obj
 
 
-def _save_json(data):
+def _save_json(data, quiet=False):
     """
     Save assembly and samples as json
     ## data as dict
@@ -737,12 +750,14 @@ def _save_json(data):
     datadict = OrderedDict([\
         ("name", data.name),\
         ("__version__", data._version),\
+        ("_sep", data._sep),\
         ("paramsdict", paramsdict),\
         ("taxa", list(data.taxa.keys())),\
-        ("_hackersonly", data._hackersonly)\
+        ("_hackersonly", data._hackersonly),\
+        ("empirical_msfs", data.empirical_msfs)\
     ])
 
-    ## sample dict
+    ## save taxat
     taxadict = OrderedDict([])
     for key, taxon in data.taxa.items():
         taxadict[key] = taxon._to_fulldict()
@@ -765,6 +780,7 @@ def _save_json(data):
 
     ## protect save from interruption
     done = 0
+    if not quiet: print("  Saving DemographicModel to {}".format(modelpath))
     while not done:
         try:
             with open(modelpath, 'w') as jout:

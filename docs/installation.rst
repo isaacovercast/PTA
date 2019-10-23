@@ -4,26 +4,27 @@
 Installation
 ============
 
-``MESS`` requires Python >= 3.5. Binaries can be downloaded with `conda <https://conda.io/docs/>`_ or built with `pip <https://pip.readthedocs.io/en/stable/>`_.
+``PTA`` requires Python >= 3.5. Installation is facilitated by the conda package
+management system.
 
----------------------------------------------
-Method 1: Install pre-built binary from conda
----------------------------------------------
-
-1. Download `anaconda <https://www.anaconda.com/download/>`_ or `miniconda <https://conda.io/miniconda.html>`_.
-2. (Optional) create a separate `conda environment <https://conda.io/docs/user-guide/tasks/manage-environments.html>`_ to install into:
+1. Download `miniconda <https://conda.io/miniconda.html>`_ and run the `bash Miniconda*`.
+2. Create a separate `conda environment <https://conda.io/docs/user-guide/tasks/manage-environments.html>`_ to install into:
 
 .. code:: bash
 
-    conda create -n mess-env
-    source activate mess-env
+    conda create -n PTA
+    conda activate PTA
 
 3. Install:
 
 .. code:: bash
 
-    conda install -c mess -c conda-forge -c anaconda -c r mess
-    #conda install mess openblas dendropy -c mess -c conda-forge -c anaconda
+    conda install -c conda-forge -c bioconda -c PTA PTA
 
+4. Test:
 
-See  `venv <https://docs.python.org/3/tutorial/venv.html>`_ to install into a virtual environment.
+.. code:: bash
+
+   PTA -v
+
+Installation issues can be reported on the `PTA github <https://github.com/isaacovercast/PTA>`_.

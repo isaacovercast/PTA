@@ -19,27 +19,22 @@ requirements:
     - numpy
     - pandas
   run:
-    - python >=3.7
+    - python >=3
     - setuptools
     - ipyparallel
     - cython
     - scipy
     - nbconvert
     - joblib
-    - jupyter_client
     - jupyter
-    - notebook
     - pandas
+    - matplotlib
     - momi
     - msprime
-    - mpmath
     - cloudpickle
-    - matplotlib
     - boruta_py
     - scikit-garden
-    - tzlocal
-    - matplotlib
-    - imagemagick
+    - scikit-learn
 
   commands:
     - PTA -v

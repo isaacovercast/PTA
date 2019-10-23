@@ -7,8 +7,8 @@ Installation
 ``PTA`` requires Python >= 3.5. Installation is facilitated by the conda package
 management system.
 
-1. Download `miniconda <https://conda.io/miniconda.html>`_ and run the `bash Miniconda*`.
-2. Create a separate `conda environment <https://conda.io/docs/user-guide/tasks/manage-environments.html>`_ to install into:
+1. Download `miniconda <https://conda.io/miniconda.html>`_ and run the installer: ``bash Miniconda*``
+2. Create a separate `conda environment <https://conda.io/docs/user-guide/tasks/manage-environments.html>`_ to install PTA into:
 
 .. code:: bash
 

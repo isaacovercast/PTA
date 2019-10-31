@@ -619,7 +619,7 @@ class DemographicModel(object):
         ## sort=False suppresses a warning about non-concatenation index if
         ## SIMOUT is empty
         msfs_df = pd.DataFrame(pd.concat([x.to_dataframe() for x in msfs_list], sort=False)).fillna(0)
-        dat = pd.concat([dat, msfs_df])
+        dat = pd.concat([dat, msfs_df], sort=False)
         dat.to_csv(simfile, header=True, index=False, sep=self._sep, float_format='%.3f')
 
 

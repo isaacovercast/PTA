@@ -39,7 +39,10 @@ class multiSFS(object):
             sfs_dict["pop{}".format(i)] = {np.array2string(x).replace(" ", "_"):y for x, y in zip(tmp_ca, tmp_lc)}
         msfs = pd.DataFrame(sfs_dict).fillna(0).astype(dtype)
         if sort:
-            msfs = msfs.apply(sorted, reverse=True, axis=1)
+            ## The `result_type` argument allows to return as a DF retaining
+            ## original column and index values, otherwise msfs will be a
+            ## returned as a Series. Annoying.
+            msfs = msfs.apply(sorted, reverse=True, axis=1, result_type='broadcast')
         return msfs
 
     ## Series will be alpha-sorted, so the order of the bins will be:

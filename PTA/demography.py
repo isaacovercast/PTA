@@ -519,7 +519,7 @@ class DemographicModel(object):
                     for pidx in range(tau_pops):
                         name = "pop{}-{}".format(tidx, pidx)
                         sfs_list.append(self._simulate(name,
-                                                N_e=N_es[i],
+                                                N_e=N_es[tidx],
                                                 tau=taus[tidx],
                                                 epsilon=epsilons[tidx]))
                 msfs = multiSFS(sfs_list,\

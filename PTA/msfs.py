@@ -89,7 +89,8 @@ class multiSFS(object):
         pass
 
 
-    ## What's coming in is pd.Series([zeta, psi, pops_per_tau, taus, epsilons]
+    ## What's coming in is pd.Series([zeta, zeta_e, psi, pops_per_tau, taus, epsilons]
+    ## zeta_e is 'effective zeta', the # of populations co-expanding
     def set_params(self, params):
         self._full_params = params
 
@@ -100,6 +101,7 @@ class multiSFS(object):
             moments[name] = func
 
         stat_dict = OrderedDict({"zeta":params["zeta"],\
+                                "zeta_e":params["zeta_e"],\
                                 "psi":params["psi"],\
                                 "t_s":params["t_s"]})
 

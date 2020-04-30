@@ -372,7 +372,11 @@ class DemographicModel(object):
         is zero (the default), then sample a random value between [0, 1).
         """
         zeta = self.paramsdict["zeta"]
-        if not zeta:
+        ## If tau is fixed then zeta is 1 by definition
+        if not isinstance(self.paramsdict["tau"], tuple):
+            zeta = 1
+        ## If zeta is 0 sample uniform [0, 1)
+        elif not zeta:
             zeta = np.random.uniform()
         return zeta
 
@@ -402,10 +406,7 @@ class DemographicModel(object):
         return mu
 
 
-    def get_pops_per_tau(self, zeta):
-
-        # Get effective # of coexpanding taxa
-        n_sync = int(np.round(zeta * self.paramsdict["npops"]))
+    def get_pops_per_tau(self, n_sync):
     
         # There needs to be at least 1 coexpansion event and coexpansion events must
         # include at least 2 taxa
@@ -509,8 +510,11 @@ class DemographicModel(object):
                 if not quiet: progressbar(nsims, i, printstr.format(elapsed))
 
                 zeta = self._sample_zeta()
-                psi, pops_per_tau = self.get_pops_per_tau(zeta)
-                LOGGER.debug("sim {} - zeta {} - psi {} - pops_per_tau{}".format(i, zeta, psi, pops_per_tau))
+                # Get effective # of coexpanding taxa
+                zeta_e = int(np.round(zeta * self.paramsdict["npops"]))
+                psi, pops_per_tau = self.get_pops_per_tau(n_sync=zeta_e)
+
+                LOGGER.debug("sim {} - zeta {} - zeta_e {} - psi {} - pops_per_tau{}".format(i, zeta, zeta_e, psi, pops_per_tau))
                 taus = self._sample_tau(ntaus=len(pops_per_tau))
                 epsilons = self._sample_epsilon(len(pops_per_tau))
                 N_es = self._sample_Ne(self.paramsdict["npops"])
@@ -529,8 +533,8 @@ class DemographicModel(object):
                 ## In the pipe_master model the first tau in the list is the co-expansion time
                 ## If/when you get around to doing the msbayes model of multiple coexpansion
                 ## pulses, then this will have to change 
-                msfs.set_params(pd.Series([zeta, psi, taus[0], pops_per_tau, taus, epsilons, N_es],\
-                                        index=["zeta", "psi", "t_s", "pops_per_tau", "taus", "epsilons", "N_es"]))
+                msfs.set_params(pd.Series([zeta, zeta_e, psi, taus[0], pops_per_tau, taus, epsilons, N_es],\
+                                        index=["zeta", "zeta_e", "psi", "t_s", "pops_per_tau", "taus", "epsilons", "N_es"]))
                 msfs_list.append(msfs)
 
             except KeyboardInterrupt as inst:

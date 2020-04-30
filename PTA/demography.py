@@ -502,8 +502,8 @@ class DemographicModel(object):
         msfs_list = []
 
         printstr = " Performing Simulations    | {} |"
+        start = time.time()
         for i in range(nsims):
-            start = time.time()
             try:
                 elapsed = datetime.timedelta(seconds=int(time.time()-start))
                 if not quiet: progressbar(nsims, i, printstr.format(elapsed))

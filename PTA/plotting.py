@@ -27,6 +27,7 @@ import PTA.util
 ## Helpful matplotlib info for plotting unicode characters:
 ## https://matplotlib.org/users/mathtext.html#subscripts-and-superscripts
 target_labels = {"zeta":"\u03B6",\
+                "zeta_e":"\u03B6_e",\
                 "psi":"\u03A8",\
                 "S_m":r"$S_M$",\
                 "J_m":r"$J_M$",\

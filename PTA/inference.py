@@ -36,7 +36,7 @@ import PTA.plotting
 ## kind of a moving target. Do something smarter here.
 ## NB: This is referenced in the plotting module, so whatever you do you have
 ## to fix it there too.
-default_targets = ['zeta', 'psi', 't_s', 'omega', 'taus_mean', 'taus_std',\
+default_targets = ['zeta', 'zeta_e', 'psi', 't_s', 'omega', 'taus_mean', 'taus_std',\
                     'taus_skewness', 'taus_kurtosis', 'taus_median', 'taus_iqr',\
                     'epsilons_mean', 'epsilons_std', 'epsilons_skewness',\
                     'epsilons_kurtosis', 'epsilons_median', 'epsilons_iqr']

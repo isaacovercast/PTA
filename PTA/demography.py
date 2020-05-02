@@ -552,7 +552,15 @@ class DemographicModel(object):
     def _simulate(self, name, N_e=1e6, tau=20000, epsilon=10, verbose=False):
         model = momi.DemographicModel(N_e=N_e)
         model.add_leaf(name)
-        model.set_size(name, t=tau, N=N_e/epsilon)
+        if epsilon > 0:
+            # epsilon positive, expansion
+            model.set_size(name, t=tau, N=N_e/epsilon)
+        elif epsilon < 0:
+            # epsilon negative, bottleneck
+            model.set_size(name, t=tau, N=N_e/epsilon)
+        else:
+            # epsilon == 0 no size change
+            pass
         sampled_n_dict={name:self.paramsdict["nsamps"]}
         if verbose: print(sampled_n_dict)
         ac = model.simulate_data(length=self.paramsdict["length"],
@@ -805,7 +813,7 @@ PARAMS = {
     "project_dir" : "Where to save files",\
     "npops" : "Number of populations undergoing co-demographic processes",\
     "nsamps" : "Numbers of samples for each populations",\
-    "N_e" : "Effective population size of the ancestral population",\
+    "N_e" : "Effective population size of the contemporary population",\
     "tau" : "Time of demographic change",\
     "epsilon" : "Magnitude of demographic change",\
     "zeta" : "Proportion of coexpanding taxa. Default will sample U~(0, 1)",\

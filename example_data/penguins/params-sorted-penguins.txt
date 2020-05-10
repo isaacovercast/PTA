@@ -1,0 +1,13 @@
+------- PTA params file (v.0.0.11)----------------------------------------------
+sorted-penguins      ## [0] [simulation_name]: The name of this simulation scenario
+./default_PTA        ## [1] [project_dir]: Where to save files
+10                   ## [2] [npops]: Number of populations undergoing co-demographic processes
+16                   ## [3] [nsamps]: Numbers of samples for each populations
+200000               ## [4] [N_e]: Effective population size of the contemporary population
+1000-10000           ## [5] [tau]: Time of demographic change
+1-10                 ## [6] [epsilon]: Magnitude of demographic change
+0                    ## [7] [zeta]: Proportion of coexpanding taxa. Default will sample U~(0, 1)
+1000                 ## [8] [length]: Length in bp of each indpendent genomic region to simulate
+2000                 ## [9] [num_replicates]: Number of genomic regions to simulate
+1e-09                ## [10] [recoms_per_gen]: Recombination rate within independent regions scaled per base per generation
+1e-08                ## [11] [muts_per_gen]: Mutation rate scaled per base per generation

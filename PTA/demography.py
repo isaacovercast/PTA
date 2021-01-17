@@ -158,7 +158,10 @@ class DemographicModel(object):
                     os.mkdir(self.paramsdict["project_dir"])
             
             elif param in ["N_e", "tau", "epsilon"]:
-                tup = tuplecheck(newvalue, dtype=int)
+                dtype = int
+                if param == "epsilon":
+                    dtype = float
+                tup = tuplecheck(newvalue, dtype=dtype)
                 if isinstance(tup, tuple):
                     self.paramsdict[param] = tup
                     if tup[0] <= 0:
@@ -522,6 +525,8 @@ class DemographicModel(object):
                 for tidx, tau_pops in enumerate(pops_per_tau):
                     for pidx in range(tau_pops):
                         name = "pop{}-{}".format(tidx, pidx)
+                        ## FIXME: Here the co-expanding pops all receive the same Ne
+                        ## and the same epsilon. Probably not the best way to do it.
                         sfs_list.append(self._simulate(name,
                                                 N_e=N_es[tidx],
                                                 tau=taus[tidx],
@@ -552,15 +557,11 @@ class DemographicModel(object):
     def _simulate(self, name, N_e=1e6, tau=20000, epsilon=10, verbose=False):
         model = momi.DemographicModel(N_e=N_e)
         model.add_leaf(name)
-        if epsilon > 0:
-            # epsilon positive, expansion
-            model.set_size(name, t=tau, N=N_e/epsilon)
-        elif epsilon < 0:
-            # epsilon negative, bottleneck
-            model.set_size(name, t=tau, N=N_e/epsilon)
-        else:
-            # epsilon == 0 no size change
-            pass
+        ## epsilon > 1 is bottleneck backwards in time
+        ## epsilon < 1 is expansion
+        ## epsilon == 1 is constant size
+        model.set_size(name, t=tau, N=N_e*epsilon)
+
         sampled_n_dict={name:self.paramsdict["nsamps"]}
         if verbose: print(sampled_n_dict)
         ac = model.simulate_data(length=self.paramsdict["length"],

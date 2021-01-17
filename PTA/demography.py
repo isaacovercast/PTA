@@ -283,7 +283,7 @@ class DemographicModel(object):
             for key, val in self.paramsdict.items():
                 if isinstance(val, tuple):
                     paramvalue = "-".join(map(str, val))
-                if isinstance(val, list):
+                elif isinstance(val, list):
                     paramvalue = ",".join(map(str, val))
                 else:
                     paramvalue = str(val)

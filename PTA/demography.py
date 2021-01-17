@@ -177,7 +177,9 @@ class DemographicModel(object):
                 ## numbers of observed loci for each sample in the data.
                 ## If you pass in a single integer value then we just use
                 ## the same num_replicates for all pops.
-                newvalue = tuplecheck(newvalue, dtype=int)
+                ## islist will properly handle setting with a list in API
+                ## mode and will do nothing in CLI mode.
+                newvalue = tuplecheck(newvalue, islist=True, dtype=int)
                 if isinstance(newvalue, int):
                     newvalue = [newvalue] * self.paramsdict["npops"]
                 self.paramsdict[param] = newvalue
@@ -281,6 +283,8 @@ class DemographicModel(object):
             for key, val in self.paramsdict.items():
                 if isinstance(val, tuple):
                     paramvalue = "-".join(map(str, val))
+                if isinstance(val, list):
+                    paramvalue = ",".join(map(str, val))
                 else:
                     paramvalue = str(val)
 
@@ -545,7 +549,7 @@ class DemographicModel(object):
                         ## FIXME: Here the co-expanding pops all receive the same Ne
                         ## and the same epsilon. Probably not the best way to do it.
                         sfs_list.append(self._simulate(name,
-                                                N_e=N_es[tidx],
+                                                N_e=N_es[idx],
                                                 tau=taus[tidx],
                                                 epsilon=epsilons[tidx],
                                                 num_replicates=self.paramsdict["num_replicates"][idx]))

@@ -86,10 +86,17 @@ def sample_param_range(param, nsamps=1, loguniform=False):
     return param
 
 
-def tuplecheck(newvalue, dtype=str):
+def tuplecheck(newvalue, islist=False, dtype=str):
     """
     Takes a string argument and returns value as a tuple.
     Needed for paramfile conversion from CLI to set_params args
+
+    islist - Whether the incoming value should be treated as a list or tuple.
+             When writing out params, the formatter determines whether to
+             delimit with ',' or '-' based on tuple vs list type.
+             In all cases tuples should be 2 elements long as these
+             specify the prior ranges. Lists are for things like
+             num_replicates, where there will be one value per npops.
     """
 
     ## If it's a list then this is probably api mode so the types
@@ -100,7 +107,10 @@ def tuplecheck(newvalue, dtype=str):
         newvalue = (dtype(newvalue[0]), dtype(newvalue[1]))
     elif isinstance(newvalue, list):
         try:
-            newvalue = tuple(newvalue)
+            if islist:
+                newvalue = newvalue
+            else:
+                newvalue = tuple(newvalue)
         except TypeError:
             raise PTAError("tuplecheck failed for {}, improper list format".format(newvalue))
     elif isinstance(newvalue, str) and "," in newvalue:

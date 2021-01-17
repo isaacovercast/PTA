@@ -848,7 +848,7 @@ PARAMS = {
     "tau" : "Time of demographic change",\
     "epsilon" : "Magnitude of demographic change",\
     "zeta" : "Proportion of coexpanding taxa. Default will sample U~(0, 1)",\
-    "length" : "Length in bp of each indpendent genomic region to simulate",\
+    "length" : "Length in bp of each independent genomic region to simulate",\
     "num_replicates" : "Number of genomic regions to simulate",\
     "recoms_per_gen" : "Recombination rate within independent regions scaled per base per generation",\
     "muts_per_gen" : "Mutation rate scaled per base per generation",\

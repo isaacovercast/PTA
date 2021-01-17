@@ -103,6 +103,9 @@ def tuplecheck(newvalue, dtype=str):
             newvalue = tuple(newvalue)
         except TypeError:
             raise PTAError("tuplecheck failed for {}, improper list format".format(newvalue))
+    elif isinstance(newvalue, str) and "," in newvalue:
+        ## This is a list of values like: 100, 200, 300
+        newvalue = [dtype(x.strip()) for x in newvalue.split(",")]
     else:
         try:
             ## If it's just one value of the proper dtype this should

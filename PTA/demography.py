@@ -171,10 +171,26 @@ class DemographicModel(object):
                     if tup <= 0:
                         raise PTAError("{} values must be strictly > 0. You put {}".format(param, tup))
 
-            elif param in ["npops", "nsamsp", "length", "num_replicates"]:
+            elif param in ["num_replicates"]:
+                ## num_replicates must be a list that is the same length
+                ## as the number of populations, and should contain the
+                ## numbers of observed loci for each sample in the data.
+                ## If you pass in a single integer value then we just use
+                ## the same num_replicates for all pops.
+                newvalue = tuplecheck(newvalue, dtype=int)
+                if isinstance(newvalue, int):
+                    newvalue = [newvalue] * self.paramsdict["npops"]
+                self.paramsdict[param] = newvalue
+                if not len(newvalue) == self.paramsdict["npops"]:
+                    raise PTAError(BAD_NUM_REPLICATES.format(len(newvalue),\
+                                                             self.paramsdict["npops"]))
+
+            elif param in ["npops", "nsamsp", "length"]:
                 self.paramsdict[param] = int(newvalue)
+
             elif param in ["recoms_per_gen", "muts_per_gen", "zeta"]:
                 self.paramsdict[param] = float(newvalue)
+
             else:
                 self.paramsdict[param] = newvalue
         except Exception as inst:
@@ -522,6 +538,7 @@ class DemographicModel(object):
                 epsilons = self._sample_epsilon(len(pops_per_tau))
                 N_es = self._sample_Ne(self.paramsdict["npops"])
                 sfs_list = []
+                idx = 0
                 for tidx, tau_pops in enumerate(pops_per_tau):
                     for pidx in range(tau_pops):
                         name = "pop{}-{}".format(tidx, pidx)
@@ -530,7 +547,9 @@ class DemographicModel(object):
                         sfs_list.append(self._simulate(name,
                                                 N_e=N_es[tidx],
                                                 tau=taus[tidx],
-                                                epsilon=epsilons[tidx]))
+                                                epsilon=epsilons[tidx],
+                                                num_replicates=self.paramsdict["num_replicates"][idx]))
+                    idx += 1
                 msfs = multiSFS(sfs_list,\
                                 sort=self._hackersonly["sorted_sfs"],\
                                 proportions=self._hackersonly["proportional_msfs"])
@@ -554,7 +573,14 @@ class DemographicModel(object):
         return msfs_list
 
 
-    def _simulate(self, name, N_e=1e6, tau=20000, epsilon=10, verbose=False):
+    def _simulate(self,
+                    name,
+                    N_e=1e6,
+                    tau=20000,
+                    epsilon=10,
+                    num_replicates=100,
+                    verbose=False):
+
         model = momi.DemographicModel(N_e=N_e)
         model.add_leaf(name)
         ## epsilon > 1 is bottleneck backwards in time
@@ -565,7 +591,7 @@ class DemographicModel(object):
         sampled_n_dict={name:self.paramsdict["nsamps"]}
         if verbose: print(sampled_n_dict)
         ac = model.simulate_data(length=self.paramsdict["length"],
-                                num_replicates=self.paramsdict["num_replicates"],
+                                num_replicates=num_replicates,
                                 recoms_per_gen=self.paramsdict["recoms_per_gen"],
                                 muts_per_gen=self._sample_mu(),
                                 sampled_n_dict=sampled_n_dict)
@@ -836,6 +862,15 @@ BAD_PTA_NAME = """\
 
     Here's what you put:
     {}
+    """
+
+BAD_NUM_REPLICATES = """
+    `num_replicates` parameter must be either a single integer value, which
+    will be interpreted as all populations having this number of loci, or it
+    must be a list of integer values that is of length `npops`.
+
+    len(num_replicates) = {}
+    npops =               {}
     """
 
 PARAMS_EXISTS = """

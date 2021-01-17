@@ -89,7 +89,7 @@ class multiSFS(object):
         pass
 
 
-    ## What's coming in is pd.Series([zeta, zeta_e, psi, pops_per_tau, taus, epsilons]
+    ## What's coming in is pd.Series([zeta, zeta_e, psi, pops_per_tau, taus, epsilons, N_es]
     ## zeta_e is 'effective zeta', the # of populations co-expanding
     def set_params(self, params):
         self._full_params = params
@@ -113,10 +113,11 @@ class multiSFS(object):
         stat_dict["omega"] = omega
 
         ## For each list of values, rip through and calculate stats
-        for label, dat in zip(["pops_per_tau", "taus", "epsilons"],
+        for label, dat in zip(["pops_per_tau", "taus", "epsilons", "Ne_s"],
                                 [self._full_params.pops_per_tau,\
                                     self._full_params.taus,\
-                                    self._full_params.epsilons]):
+                                    self._full_params.epsilons,\
+                                    self._full_params.N_es]):
 
             ## I'm going to just mask out the pops_per_tau stats for now
             ## as for the initial stage of development we'll focus on the

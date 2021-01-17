@@ -108,9 +108,9 @@ def tuplecheck(newvalue, islist=False, dtype=str):
     elif isinstance(newvalue, list):
         try:
             if islist:
-                newvalue = newvalue
+                newvalue = [dtype(x) for x in newvalue]
             else:
-                newvalue = tuple(newvalue)
+                newvalue = tuple(dtype(x) for x in newvalue)
         except TypeError:
             raise PTAError("tuplecheck failed for {}, improper list format".format(newvalue))
     elif isinstance(newvalue, str) and "," in newvalue:

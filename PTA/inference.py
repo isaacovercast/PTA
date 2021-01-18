@@ -39,7 +39,8 @@ import PTA.plotting
 default_targets = ['zeta', 'zeta_e', 'psi', 't_s', 'omega', 'taus_mean', 'taus_std',\
                     'taus_skewness', 'taus_kurtosis', 'taus_median', 'taus_iqr',\
                     'epsilons_mean', 'epsilons_std', 'epsilons_skewness',\
-                    'epsilons_kurtosis', 'epsilons_median', 'epsilons_iqr']
+                    'epsilons_kurtosis', 'epsilons_median', 'epsilons_iqr',\
+                    'Ne_s_mean', 'Ne_s_std', 'Ne_s_skewness', 'Ne_s_kurtosis', 'Ne_s_median', 'Ne_s_iqr']
 
 class Ensemble(object):
     """

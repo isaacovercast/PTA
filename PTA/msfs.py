@@ -45,12 +45,17 @@ class multiSFS(object):
             msfs = msfs.apply(sorted, reverse=True, axis=1, result_type='broadcast')
         return msfs
 
+
     ## Series will be alpha-sorted, so the order of the bins will be:
     ## pop1-cfg1 pop1-cfg2 pop1-cfg3 pop2-cfg1 pop2-cfg2 pop2-cfg3 ...
     def to_dataframe(self):
         msfs_dat = pd.DataFrame({"{}-{}".format(x, y):self.df[x][y] for x in self.df.columns\
                                                         for y in self.df.index}, index=["0"])
-        return pd.concat([self.stats, msfs_dat], axis=1)
+        if not self.stats.empty:
+            ## empirical data won't have stats, so don't write it
+            msfs_dat = pd.concat([self.stats, msfs_dat], axis=1)
+
+        return msfs_dat
 
 
     def to_string(self, sep=" "):

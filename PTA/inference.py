@@ -394,14 +394,16 @@ class Ensemble(object):
             ## if you have run reature selection.
             if self._by_target:
                 for t in self.targets:
-                    self.model_by_target[t]["model"] = self._base_model(**self._model_params, n_jobs=-1)
+                    self.model_by_target[t]["model"] = self._base_model(**self._model_params)
+                    self.model_by_target[t]["model"].set_params(n_jobs=-1)
                     self.model_by_target[t]["model"].fit(self.X[self.model_by_target[t]["features"]], self.y[t])
                     self.model_by_target[t]["feature_importances"] = self.model_by_target[t]["model"].feature_importances_
                 ## Set the best_model variable just using the model for the first target
                 self.best_model = self.model_by_target[self.targets[0]]["model"]
             else:
                 ## TODO: Make default base_model params smarter
-                self.best_model = self._base_model(**self._model_params, n_jobs=-1)
+                self.best_model = self._base_model(**self._model_params)
+                self.best_model.set_params(n_jobs=-1)
                 self.best_model.fit(self.X, self.y)
         if verbose: print("Predict() finished: {}".format(datetime.datetime.now()))
 

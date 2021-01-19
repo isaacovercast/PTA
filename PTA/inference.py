@@ -168,6 +168,21 @@ class Ensemble(object):
         return joblib.load(infile)
 
 
+    def set_params(self, params=dict()):
+        """
+        Allow to directly specify the parameters of the sklearn model, rather
+        than doing a parameter search. Useful if param searching takes a long
+        time and you only want to do it once, and reuse the best parameter
+        set for multiple models.
+
+        :param dict params: A dictionary of parameter values and settings to
+            pass to the underlying sklearn model. It's up to you to be sure
+            the passed in parameters make sense for whatever model you're using.
+        """
+        ## These parameters will be applied during the call to Ensemble.predict()
+        self._model_params = params
+
+
     def set_features(self, feature_list=''):
         """
         Specify the feature list to use for classification/regression. By
@@ -342,7 +357,13 @@ class Ensemble(object):
 
 
     ## The magic method to just do-it-all
-    def predict(self, select_features=True, param_search=True, by_target=False, quick=False, force=False, verbose=False):
+    def predict(self,
+                select_features=True,
+                param_search=True,
+                by_target=False,
+                quick=False,
+                force=False,
+                verbose=False):
         if verbose: print("Predict() started: {}".format(datetime.datetime.now()))
 
         try:
@@ -373,14 +394,14 @@ class Ensemble(object):
             ## if you have run reature selection.
             if self._by_target:
                 for t in self.targets:
-                    self.model_by_target[t]["model"] = self._base_model()
+                    self.model_by_target[t]["model"] = self._base_model(**self._model_params, n_jobs=-1)
                     self.model_by_target[t]["model"].fit(self.X[self.model_by_target[t]["features"]], self.y[t])
                     self.model_by_target[t]["feature_importances"] = self.model_by_target[t]["model"].feature_importances_
                 ## Set the best_model variable just using the model for the first target
                 self.best_model = self.model_by_target[self.targets[0]]["model"]
             else:
                 ## TODO: Make default base_model params smarter
-                self.best_model = self._base_model(n_jobs=-1)
+                self.best_model = self._base_model(**self._model_params, n_jobs=-1)
                 self.best_model.fit(self.X, self.y)
         if verbose: print("Predict() finished: {}".format(datetime.datetime.now()))
 

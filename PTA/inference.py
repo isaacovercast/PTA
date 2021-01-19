@@ -29,8 +29,8 @@ from sklearn.preprocessing import PowerTransformer
 import logging
 LOGGER = logging.getLogger(__name__)
 
-import PTA.util
 import PTA.plotting
+from PTA.util import PTAError
 
 ## TODO: Get rid of globals. This is here because the parameters are still
 ## kind of a moving target. Do something smarter here.

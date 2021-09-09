@@ -601,6 +601,8 @@ class DemographicModel(object):
                                 sampled_n_dict=sampled_n_dict)
         try:
             sfs = ac.extract_sfs(n_blocks=1)
+            ## TODO: Issue #12 <- Allow unfolded SFS.
+            sfs = sfs.fold()
         except ValueError:
             ## If _sample_mu() returns zero, or a very small value with respect to
             ## sequence length, Ne, and tau, then you can get a case where there

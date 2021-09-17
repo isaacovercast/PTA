@@ -114,7 +114,7 @@ class multiSFS(object):
         if not params["taus"].var():
             omega = 0
         else:
-            omega = params["taus"].mean()/params["taus"].var()
+            omega = params["taus"].var()/params["taus"].mean()
         stat_dict["omega"] = omega
 
         ## For each list of values, rip through and calculate stats

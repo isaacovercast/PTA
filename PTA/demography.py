@@ -1,4 +1,5 @@
 import datetime
+import itertools
 import json
 import logging
 import momi
@@ -371,19 +372,30 @@ class DemographicModel(object):
 
     ## For sampling from priors, the draw comes from the half open interval
     ## so for tau we add 1 to account for most people not thinking of this.
-    def _sample_tau(self, ntaus=1):
+    def _sample_tau(self, pops_per_tau):
+        """
+        pops_per_tau - A list of number of populations per coexpansion event.
+                       In the simplest case of one coexpansion it will look
+                       like this [6, 1, 1, 1], indictating one coexpansion of
+                       6 taxa and independent expansions of 3 other taxa (9 total).
+        returns a list of expansion times of length npops
+        """
         tau = self.paramsdict["tau"]
         if isinstance(tau, tuple):
             tau = (tau[0], tau[1]+1)
         else:
             tau = (tau, tau+1)
-        return np.random.randint(tau[0], tau[1], ntaus)
+        taus = [[np.random.randint(tau[0], tau[1], 1)[0]] * x for x in pops_per_tau]
+        # Collapse the list of lists to a single list with ts per population
+        return np.array(list(itertools.chain.from_iterable(taus)))
 
 
-    def _sample_epsilon(self, nsamps=1):
+    def _sample_epsilon(self, pops_per_tau):
         eps = self.paramsdict["epsilon"]
         if isinstance(eps, tuple):
-            eps = np.random.uniform(eps[0], eps[1], nsamps)
+            #eps = np.random.uniform(eps[0], eps[1], nsamps)
+            eps = [[np.random.randint(eps[0], eps[1], 1)[0]] * x for x in pops_per_tau]
+            eps = np.array(list(itertools.chain.from_iterable(eps)))
         else:
             eps = np.array([eps] * nsamps)
         return eps
@@ -538,20 +550,20 @@ class DemographicModel(object):
                 psi, pops_per_tau = self.get_pops_per_tau(n_sync=zeta_e)
 
                 LOGGER.debug("sim {} - zeta {} - zeta_e {} - psi {} - pops_per_tau{}".format(i, zeta, zeta_e, psi, pops_per_tau))
-                taus = self._sample_tau(ntaus=len(pops_per_tau))
-                epsilons = self._sample_epsilon(len(pops_per_tau))
+                taus = self._sample_tau(pops_per_tau)
+                epsilons = self._sample_epsilon(pops_per_tau)
                 N_es = self._sample_Ne(self.paramsdict["npops"])
                 sfs_list = []
                 idx = 0
                 for tidx, tau_pops in enumerate(pops_per_tau):
                     for pidx in range(tau_pops):
                         name = "pop{}-{}".format(tidx, pidx)
-                        ## FIXME: Here the co-expanding pops all receive the same Ne
-                        ## and the same epsilon. Probably not the best way to do it.
+                        ## FIXME: Here the co-expanding pops all receive the same
+                        ## epsilon. Probably not the best way to do it.
                         sfs_list.append(self._simulate(name,
                                                 N_e=N_es[idx],
-                                                tau=taus[tidx],
-                                                epsilon=epsilons[tidx],
+                                                tau=taus[idx],
+                                                epsilon=epsilons[idx],
                                                 num_replicates=self.paramsdict["num_replicates"][idx]))
                     idx += 1
                 msfs = multiSFS(sfs_list,\
@@ -561,6 +573,7 @@ class DemographicModel(object):
                 ## In the pipe_master model the first tau in the list is the co-expansion time
                 ## If/when you get around to doing the msbayes model of multiple coexpansion
                 ## pulses, then this will have to change 
+                #import pdb; pdb.set_trace()
                 msfs.set_params(pd.Series([zeta, zeta_e, psi, taus[0], pops_per_tau, taus, epsilons, N_es],\
                                         index=["zeta", "zeta_e", "psi", "t_s", "pops_per_tau", "taus", "epsilons", "N_es"]))
                 msfs_list.append(msfs)

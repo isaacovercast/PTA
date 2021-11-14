@@ -395,7 +395,11 @@ class Ensemble(object):
             if self._by_target:
                 for t in self.targets:
                     self.model_by_target[t]["model"] = self._base_model(**self._model_params)
-                    self.model_by_target[t]["model"].set_params(n_jobs=-1)
+                    try:
+                        self.model_by_target[t]["model"].set_params(n_jobs=-1)
+                    except ValueError:
+                        ## GradientBoosting methods don't take the n_jobs parameter
+                        pass
                     self.model_by_target[t]["model"].fit(self.X[self.model_by_target[t]["features"]], self.y[t])
                     self.model_by_target[t]["feature_importances"] = self.model_by_target[t]["model"].feature_importances_
                 ## Set the best_model variable just using the model for the first target

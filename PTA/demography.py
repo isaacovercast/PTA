@@ -1,4 +1,5 @@
 import datetime
+import itertools
 import json
 import logging
 import momi
@@ -67,6 +68,7 @@ class DemographicModel(object):
                        ("zeta", 0),
                        ("length", 1000),
                        ("num_replicates", 100),
+                       ("generation_time", 1),
                        ("recoms_per_gen", 1e-9),
                        ("muts_per_gen", 1e-8)
         ])
@@ -94,6 +96,10 @@ class DemographicModel(object):
                        ("proportional_msfs", False),
                        ("mu_variance", 0),
         ])
+
+        ## Ne_ave, the expected value of the Ne parameter given a unifrom prior
+        ## This will actually be set inside _paramschecker
+        self._Ne_ave = self.paramsdict["N_e"]
 
         ## The empirical msfs
         self.empirical_msfs = ""
@@ -170,6 +176,9 @@ class DemographicModel(object):
                     self.paramsdict[param] = tup
                     if tup <= 0:
                         raise PTAError("{} values must be strictly > 0. You put {}".format(param, tup))
+                if param == "N_e":
+                    # Calculate Ne_ave, the expected value of the uniform prior on Nes
+                    self._Ne_ave = np.mean(tup)
 
             elif param in ["num_replicates"]:
                 ## num_replicates must be a list that is the same length
@@ -190,7 +199,7 @@ class DemographicModel(object):
             elif param in ["npops", "nsamsp", "length"]:
                 self.paramsdict[param] = int(newvalue)
 
-            elif param in ["recoms_per_gen", "muts_per_gen", "zeta"]:
+            elif param in ["generation_time", "recoms_per_gen", "muts_per_gen", "zeta"]:
                 self.paramsdict[param] = float(newvalue)
 
             else:
@@ -371,19 +380,34 @@ class DemographicModel(object):
 
     ## For sampling from priors, the draw comes from the half open interval
     ## so for tau we add 1 to account for most people not thinking of this.
-    def _sample_tau(self, ntaus=1):
+    def _sample_tau(self, pops_per_tau):
+        """
+        pops_per_tau - A list of number of populations per coexpansion event.
+                       In the simplest case of one coexpansion it will look
+                       like this [6, 1, 1, 1], indictating one coexpansion of
+                       6 taxa and independent expansions of 3 other taxa (9 total).
+        returns a list of expansion times of length npops
+        """
         tau = self.paramsdict["tau"]
         if isinstance(tau, tuple):
             tau = (tau[0], tau[1]+1)
         else:
             tau = (tau, tau+1)
-        return np.random.randint(tau[0], tau[1], ntaus)
+        taus = [[np.random.randint(tau[0], tau[1], 1)[0]] * x for x in pops_per_tau]
+        # Collapse the list of lists to a single list with ts per population
+        taus = np.array(list(itertools.chain.from_iterable(taus)))
+
+        # Scale years to generations
+        taus = taus/self.paramsdict["generation_time"]
+
+        return taus
 
 
-    def _sample_epsilon(self, nsamps=1):
+    def _sample_epsilon(self, pops_per_tau):
         eps = self.paramsdict["epsilon"]
         if isinstance(eps, tuple):
-            eps = np.random.uniform(eps[0], eps[1], nsamps)
+            eps = [[np.random.uniform(eps[0], eps[1], 1)[0]] * x for x in pops_per_tau]
+            eps = np.array(list(itertools.chain.from_iterable(eps)))
         else:
             eps = np.array([eps] * nsamps)
         return eps
@@ -538,25 +562,29 @@ class DemographicModel(object):
                 psi, pops_per_tau = self.get_pops_per_tau(n_sync=zeta_e)
 
                 LOGGER.debug("sim {} - zeta {} - zeta_e {} - psi {} - pops_per_tau{}".format(i, zeta, zeta_e, psi, pops_per_tau))
-                taus = self._sample_tau(ntaus=len(pops_per_tau))
-                epsilons = self._sample_epsilon(len(pops_per_tau))
+                # taus here will be in generations not years
+                taus = self._sample_tau(pops_per_tau)
+                epsilons = self._sample_epsilon(pops_per_tau)
                 N_es = self._sample_Ne(self.paramsdict["npops"])
                 sfs_list = []
                 idx = 0
                 for tidx, tau_pops in enumerate(pops_per_tau):
                     for pidx in range(tau_pops):
                         name = "pop{}-{}".format(tidx, pidx)
-                        ## FIXME: Here the co-expanding pops all receive the same Ne
-                        ## and the same epsilon. Probably not the best way to do it.
+                        ## FIXME: Here the co-expanding pops all receive the same
+                        ## epsilon. Probably not the best way to do it.
                         sfs_list.append(self._simulate(name,
                                                 N_e=N_es[idx],
-                                                tau=taus[tidx],
-                                                epsilon=epsilons[tidx],
+                                                tau=taus[idx],
+                                                epsilon=epsilons[idx],
                                                 num_replicates=self.paramsdict["num_replicates"][idx]))
                     idx += 1
                 msfs = multiSFS(sfs_list,\
                                 sort=self._hackersonly["sorted_sfs"],\
                                 proportions=self._hackersonly["proportional_msfs"])
+
+                ## Scale time to coalsecent units
+                taus = taus/(2*self._Ne_ave)
 
                 ## In the pipe_master model the first tau in the list is the co-expansion time
                 ## If/when you get around to doing the msbayes model of multiple coexpansion
@@ -601,6 +629,8 @@ class DemographicModel(object):
                                 sampled_n_dict=sampled_n_dict)
         try:
             sfs = ac.extract_sfs(n_blocks=1)
+            ## TODO: Issue #12 <- Allow unfolded SFS.
+            sfs = sfs.fold()
         except ValueError:
             ## If _sample_mu() returns zero, or a very small value with respect to
             ## sequence length, Ne, and tau, then you can get a case where there
@@ -850,6 +880,7 @@ PARAMS = {
     "zeta" : "Proportion of coexpanding taxa. Default will sample U~(0, 1)",\
     "length" : "Length in bp of each independent genomic region to simulate",\
     "num_replicates" : "Number of genomic regions to simulate",\
+    "generation_time" : "Generation time in years",\
     "recoms_per_gen" : "Recombination rate within independent regions scaled per base per generation",\
     "muts_per_gen" : "Mutation rate scaled per base per generation",\
 }

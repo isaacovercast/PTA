@@ -1,3 +1,5 @@
+import glob
+import momi
 import numpy as np
 import os
 import pandas as pd
@@ -63,35 +65,42 @@ class multiSFS(object):
         return dat
 
 
-    def dump(self, outdir="", out="", full=False):
+    def dump(self, outdir="", outfile="", full=False):
         """
         """
+        if not outfile:
+            outfile = "output.msfs"
         if not outdir:
             outdir = "./"
-        if not out:
-            out = "output.msfs"
+        if full: outdir = os.path.join(outdir, "sfs_dir")
 
         if not os.path.exists(outdir):
             os.mkdir(outdir)
 
-        with open(os.path.join(outdir, out), 'a+') as outfile:
-            outfile.write(self.to_string())
-
         if full:
-            outdir = os.path.join(outdir, "sfs_dir")
-            if not os.path.exists(outdir):
-                os.mkdir(outdir)
             for sfs in self.sfslist:
                 sfs.dump(os.path.join(outdir, "{}.sfs".format(sfs.populations[0])))
+        else:
+            self.df.to_csv(os.path.join(outdir, outfile))
 
 
     ## TODO: Do stuff here.
     @staticmethod
-    def load(file):
+    def load(insfs):
         """
         Would be convenient to have a load method as well.
         """
-        pass
+        if os.path.isdir(insfs):
+            if indir:
+                sfss = glob.glob(simsfs + "/*")
+                sfss = [momi.Sfs.load(x) for x in sfss]
+                msfs = PTA.msfs.multiSFS(sfss, sort=sort, proportions=proportions)
+        else:
+            try:
+                msfs = pd.read_csv(insfs, index_col=0)
+            except:
+                raise PTAError("Malformed msfs file: {}".format(insfs))
+        return msfs
 
 
     ## What's coming in is pd.Series([zeta, zeta_e, psi, pops_per_tau, taus, epsilons, N_es]

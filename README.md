@@ -1,6 +1,6 @@
-# PTA
+# PTA - Phylogeographic Temporal Analysis
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/isaacovercast/PTA/master)
 
-Phylogeographic Temporal Analysis
 
 Whole genome or SNP based comparative phylogeographic analysis for co-distributed
 assemblages of communities. The result of aggregating a bunch of momis and dadis.

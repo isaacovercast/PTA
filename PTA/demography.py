@@ -402,14 +402,15 @@ class DemographicModel(object):
 
         return taus
 
-
+    ## Here we can either have all co-expanding taxa with the same epsilon
+    ## or we can have one random epsilon per taxon. As it stands it's the first way
     def _sample_epsilon(self, pops_per_tau):
         eps = self.paramsdict["epsilon"]
         if isinstance(eps, tuple):
             eps = [[np.random.uniform(eps[0], eps[1], 1)[0]] * x for x in pops_per_tau]
             eps = np.array(list(itertools.chain.from_iterable(eps)))
         else:
-            eps = np.array([eps] * len(pops_per_tau))
+            eps = np.array([eps] * self.paramsdict["npops"])
         return eps
 
 

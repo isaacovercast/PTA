@@ -15,7 +15,7 @@ import shutil
 
 from boruta import BorutaPy
 from copy import deepcopy
-from skgarden import RandomForestQuantileRegressor
+#from skgarden import RandomForestQuantileRegressor
 from sklearn import metrics
 from sklearn.dummy import DummyClassifier, DummyRegressor
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier,\
@@ -581,7 +581,7 @@ class Classifier(Ensemble):
     :param bool verbose: Print detailed progress information.
     """
 
-    _default_targets = ["psi"]
+    _default_targets = ["zeta_e"]
 
     def __init__(self, empirical_df, sims="", algorithm="rf", verbose=False):
         super(Classifier, self).__init__(empirical_df, sims=sims, algorithm=algorithm, verbose=verbose)

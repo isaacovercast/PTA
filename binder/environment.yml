@@ -4,6 +4,7 @@ channels:
   - bioconda
   - PTA
 dependencies:
+  - python=3.9
   - jupyter
   - scikit-learn
   - anaconda-client

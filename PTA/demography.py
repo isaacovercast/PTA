@@ -438,6 +438,25 @@ class DemographicModel(object):
         return N_e
 
 
+    def _check_numreplicates(self):
+        """
+        Ensure num_replicates is the correct length. API mode doesn't
+        automatically expand an individual integer to an int list, and
+        also, if one chooses to specify the number of loci per pop, but
+        this doesn't agree with the number of npops this is a problem.
+        """
+        num_replicates = self.paramsdict["num_replicates"]
+        if isinstance(num_replicates, list):
+            if not len(num_replicates) == self.paramsdict["npops"]:
+                raise PTAError(BAD_NUM_REPLICATES.format(len(num_replicates),\
+                                                         self.paramsdict["npops"]))
+        elif isinstance(num_replicates, int):
+            num_replicates = [num_replicates] * self.paramsdict["npops"]
+        else:
+            raise PTAError("num_replicates param must be int or list: {}".format(num_replicates))
+        return num_replicates
+
+
     def _sample_mu(self):
         """
         Sample mu from a zero-truncated normal distribution, if mu_var is
@@ -563,10 +582,12 @@ class DemographicModel(object):
                 psi, pops_per_tau = self.get_pops_per_tau(n_sync=zeta_e)
 
                 LOGGER.debug("sim {} - zeta {} - zeta_e {} - psi {} - pops_per_tau{}".format(i, zeta, zeta_e, psi, pops_per_tau))
+                # All taus, epsilons, and N_es will be the length of npops
                 # taus here will be in generations not years
                 taus = self._sample_tau(pops_per_tau)
                 epsilons = self._sample_epsilon(pops_per_tau)
                 N_es = self._sample_Ne(self.paramsdict["npops"])
+                num_replicates = self._check_numreplicates()
                 sfs_list = []
                 idx = 0
                 for tidx, tau_pops in enumerate(pops_per_tau):
@@ -578,7 +599,7 @@ class DemographicModel(object):
                                                 N_e=N_es[idx],
                                                 tau=taus[idx],
                                                 epsilon=epsilons[idx],
-                                                num_replicates=self.paramsdict["num_replicates"][idx]))
+                                                num_replicates=num_replicates[idx]))
                     idx += 1
                 msfs = multiSFS(sfs_list,\
                                 sort=self._hackersonly["sorted_sfs"],\

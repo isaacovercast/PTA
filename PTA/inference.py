@@ -15,7 +15,7 @@ import shutil
 
 from boruta import BorutaPy
 from copy import deepcopy
-from skgarden import RandomForestQuantileRegressor
+#from skgarden import RandomForestQuantileRegressor
 from sklearn import metrics
 from sklearn.dummy import DummyClassifier, DummyRegressor
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier,\

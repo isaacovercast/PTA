@@ -1,0 +1,17 @@
+name: PTA
+channels:
+  - conda-forge
+  - bioconda
+  - PTA
+dependencies:
+  - python=3.9
+  - jupyter
+  - scikit-learn
+  - anaconda-client
+  - momi
+  - tzlocal
+  - ipyparallel
+  - rpy2
+  - dadi
+  - simplegeneric
+  - boruta_py

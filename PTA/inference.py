@@ -581,7 +581,7 @@ class Classifier(Ensemble):
     :param bool verbose: Print detailed progress information.
     """
 
-    _default_targets = ["psi"]
+    _default_targets = ["zeta_e"]
 
     def __init__(self, empirical_df, sims="", algorithm="rf", verbose=False):
         super(Classifier, self).__init__(empirical_df, sims=sims, algorithm=algorithm, verbose=verbose)
@@ -729,8 +729,8 @@ class Classifier(Ensemble):
         #ax.set_xticklabels(labels, fontsize=15)
         #ax.set_yticklabels(labels, fontsize=15)
         ax.set_title(title, fontsize=25)
-        ax.set_ylabel('True {}'.format(PTA.plotting.target_labels["psi"]), fontsize=20)
-        ax.set_xlabel('Predicted {}'.format(PTA.plotting.target_labels["psi"]), fontsize=20)
+        ax.set_ylabel('True {}'.format(PTA.plotting.target_labels["zeta_e"]), fontsize=20)
+        ax.set_xlabel('Predicted {}'.format(PTA.plotting.target_labels["zeta_e"]), fontsize=20)
 
         plt.setp(ax.get_xticklabels(), rotation=0, ha="right",
                 rotation_mode="anchor")

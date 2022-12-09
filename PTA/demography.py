@@ -93,7 +93,7 @@ class DemographicModel(object):
         self._hackersonly = dict([
                        ("sorted_sfs", True),
                        ("allow_psi>1", False), 
-                       ("proportional_msfs", False),
+                       ("proportional_msfs", True),
                        ("mu_variance", 0),
         ])
 
@@ -409,7 +409,7 @@ class DemographicModel(object):
             eps = [[np.random.uniform(eps[0], eps[1], 1)[0]] * x for x in pops_per_tau]
             eps = np.array(list(itertools.chain.from_iterable(eps)))
         else:
-            eps = np.array([eps] * nsamps)
+            eps = np.array([eps] * len(pops_per_tau))
         return eps
 
 

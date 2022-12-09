@@ -14,7 +14,7 @@ class multiSFS(object):
         self.df = multiSFS.to_df(sfs_list, sort=sort, proportions=proportions)
         self.config_array = self.df.index.values
         self.loc_counts = np.array([x.loc_counts for x in sfs_list])
-        self.stats = pd.Series()
+        self.stats = pd.Series(dtype=object)
 
         # For debugging, you can remove this after msfs works good.
         self.sfslist = sfs_list

@@ -3,9 +3,14 @@ import momi
 import numpy as np
 import os
 import pandas as pd
+import warnings
 from scipy.stats import entropy, kurtosis, iqr, skew
 from collections import OrderedDict
 
+## RuntimeWarning skew/kurtosis raise this for constant data and
+## return 'nan', this is a change from scipy >= 1.9:
+## https://github.com/scipy/scipy/issues/16765
+warnings.simplefilter('ignore', RuntimeWarning)
 
 class multiSFS(object):
     def __init__(self, sfs_list, sort=False, proportions=False):
@@ -139,6 +144,9 @@ class multiSFS(object):
             if label == "pops_per_tau":
                 continue
 
+            ## RuntimeWarning skew/kurtosis raise this for constant data and
+            ## return 'nan', this is a change from scipy >= 1.9:
+            ## https://github.com/scipy/scipy/issues/16765
             for func_name, func in list(moments.items()):
                 stat_dict["{}_{}".format(label, func_name)] = func(dat)
         self.stat_dict = stat_dict

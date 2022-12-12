@@ -11,7 +11,5 @@ dependencies:
   - momi
   - tzlocal
   - ipyparallel
-  - rpy2
-  - dadi
   - simplegeneric
   - boruta_py

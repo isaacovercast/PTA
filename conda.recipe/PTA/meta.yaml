@@ -12,17 +12,14 @@ build:
 
 requirements:
   build:
-    - python
     - setuptools
     - msprime
-    - cython
     - numpy
     - pandas
   run:
-    - python >=3
+    - python
     - setuptools
     - ipyparallel
-    - cython
     - scipy
     - nbconvert
     - joblib
@@ -33,7 +30,6 @@ requirements:
     - msprime
     - cloudpickle
     - boruta_py
-    - scikit-garden
     - scikit-learn
 
   commands:

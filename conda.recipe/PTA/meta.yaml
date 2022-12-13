@@ -15,7 +15,7 @@ requirements:
     - python
     - setuptools
     - msprime
-    - numpy
+    - numpy>=1.17
     - pandas
   run:
     - python

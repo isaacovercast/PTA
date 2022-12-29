@@ -74,8 +74,8 @@ def parse_command_line():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""\n
   * Example command-line usage: 
-    PTA -n data                       ## create new file called params-data.txt 
-    PTA -p params-data.txt            ## run PTA with settings in params file
+    PTA -n data                       ## create new params file called params-data.txt 
+    PTA -p params-data.txt -s 1       ## run one PTA simulation w/ settings in params file
     """)
 
     ## add arguments 

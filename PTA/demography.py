@@ -93,7 +93,7 @@ class DemographicModel(object):
         self._hackersonly = dict([
                        ("sorted_sfs", True),
                        ("allow_psi>1", False), 
-                       ("proportional_msfs", True),
+                       ("proportional_msfs", False),
                        ("mu_variance", 0),
         ])
 

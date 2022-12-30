@@ -120,7 +120,13 @@ def tuplecheck(newvalue, islist=False, dtype=str):
         try:
             ## If it's just one value of the proper dtype this should
             ## suffice to catch it.
-            newvalue = dtype(newvalue)
+            try:
+                newvalue = dtype(newvalue)
+            except ValueError:
+                ## If you pass in a float-like (2e5) and want an int
+                ## you can't go straight from str (which is the type of newvalue
+                ## so you have to go the long way.
+                newvalue = dtype(float(newvalue))
         except Exception as inst:
             ## Failed to cast to dtype, so this is probably a prior range
             ## In some cases you may get string representations of float

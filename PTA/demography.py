@@ -606,7 +606,9 @@ class DemographicModel(object):
                                 proportions=self._hackersonly["proportional_msfs"])
 
                 ## Scale time to coalsecent units
-                taus = taus/(2*self._Ne_ave)
+                ## Here taus in generations already, so scale to coalescent units
+                ## assuming diploid so 2 * 2Ne
+                taus = taus/(4*self._Ne_ave)
 
                 ## In the pipe_master model the first tau in the list is the co-expansion time
                 ## If/when you get around to doing the msbayes model of multiple coexpansion

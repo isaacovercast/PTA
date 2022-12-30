@@ -62,7 +62,7 @@ def _filter_sims(sims,\
 
     ## Wether to select only specific timepoints bracketed by `tol` or
     ## just plot everything.
-    if select is '':
+    if select == '':
         pass
     else:
         pass

@@ -1,3 +1,10 @@
 #!/bin/bash
 pip install -e .
 pip install tabview
+
+# np aliases to things like np.int and np.warnings are deprecated
+# now and this is fixed in the boruta github, but not in the pip
+# or conda packages, so we'll just run in dev mode from the repo
+git clone https://github.com/scikit-learn-contrib/boruta_py.git
+cd boruta_py
+pip install -e .

@@ -12,6 +12,7 @@ import numpy as np
 import os
 import pandas as pd
 import shutil
+import warnings
 
 from boruta import BorutaPy
 from copy import deepcopy
@@ -281,7 +282,7 @@ class Ensemble(object):
             # define Boruta feature selection method
             feat_selector = BorutaPy(model, max_iter=max_iter, n_estimators='auto', verbose=0, random_state=1)
             ## Turn off np warnings
-            np.warnings.filterwarnings('ignore')
+            warnings.filterwarnings('ignore')
             feat_selector.fit(tmpX, tmpy)
 
             # check ranking of features

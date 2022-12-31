@@ -104,7 +104,7 @@ class Ensemble(object):
 
         ## Set default ML model parameters which may be overridden
         ## by calls to `set_params()` or by setting `param_search=True`.
-        self._model_params = _get_param_grid(self.algorithm)
+        self._model_params = {}
 
 
     def __repr__(self):

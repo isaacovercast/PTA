@@ -368,8 +368,8 @@ class Ensemble(object):
 
     ## The magic method to just do-it-all
     def predict(self,
-                select_features=True,
-                param_search=True,
+                select_features=False,
+                param_search=False,
                 by_target=False,
                 quick=False,
                 force=False,

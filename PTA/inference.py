@@ -102,6 +102,10 @@ class Ensemble(object):
         ## then this will get over-written.
         self.model_by_target = {x:{"features":list(self.X.columns)} for x in self.y.columns}
 
+        ## Set default ML model parameters which may be overridden
+        ## by calls to `set_params()` or by setting `param_search=True`.
+        self._model_params = _get_param_grid(self.algorithm)
+
 
     def __repr__(self):
         return "{}: nsims - {}\n\tFeatures - {}\n\tTargets - {}".format(type(self), len(self._X), list(self.features), self.targets)

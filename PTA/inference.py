@@ -770,6 +770,7 @@ class Classifier(Ensemble):
         try:
             probs = self.empirical_proba.values[0]
             ax = plt.bar(x=range(len(probs)), height=probs)
+            ax.suptitle("Classiffier probabilities - {}".format(PTA.plotting.target_labels["zeta_e"]))
         except AttributeError as inst:
             msg = "Classifier contains no results. Must call .predict() first."
             raise PTAError(msg)

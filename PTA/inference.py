@@ -133,6 +133,11 @@ class Ensemble(object):
         self.empirical_df = empirical_df
 
         try:
+            ## Allow empirical df to be a string pointing to a properly
+            ## formatted msfs on disk
+            if isinstance(empirical_df, str):
+                empirical_df = pd.read_csv(empirical_df, sep=" ")
+
             ## TODO: Not sure how this will look eventually because the "sumstats"
             ## are just the mSFS bins.
             self.empirical_sumstats = empirical_df

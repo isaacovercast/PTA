@@ -763,6 +763,19 @@ class Classifier(Ensemble):
         return ax
 
 
+    def plot(self):
+        """
+        Simple method for visualizing the classification probabilities
+        """
+        try:
+            probs = self.empirical_proba.values[0]
+            ax = plt.bar(x=range(len(probs)), height=probs)
+        except AttributeError as inst:
+            msg = "Classifier contains no results. Must call .predict() first."
+            raise PTAError(msg)
+        return ax
+
+
 class Regressor(Ensemble):
     """
     This class wraps all the parameter estimation machinery.

@@ -608,7 +608,7 @@ class Classifier(Ensemble):
         self._param_grid = _get_param_grid(algorithm)
 
 
-    def predict(self, select_features=True, param_search=True, by_target=False, quick=False, force=False, verbose=False):
+    def predict(self, select_features=False, param_search=False, by_target=False, quick=False, force=False, verbose=False):
         """
         Predict the community assembly model class probabilities.
 
@@ -875,7 +875,7 @@ class Regressor(Ensemble):
         return self.empirical_pred
 
 
-    def predict(self, select_features=True, param_search=True, by_target=False, quick=False, force=True, verbose=False):
+    def predict(self, select_features=False, param_search=False, by_target=False, quick=False, force=True, verbose=False):
         """
         Predict parameter estimates for selected targets.
 

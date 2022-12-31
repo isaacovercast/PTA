@@ -418,7 +418,7 @@ class Ensemble(object):
                 ## TODO: Make default base_model params smarter
                 self.best_model = self._base_model(**self._model_params)
                 self.best_model.set_params(n_jobs=-1)
-                self.best_model.fit(self.X, self.y)
+                self.best_model.fit(self.X, self.y.values.ravel())
         if verbose: print("Predict() finished: {}".format(datetime.datetime.now()))
 
 
@@ -491,7 +491,7 @@ predict() on the estimator prior to calling the cv_predict/cv_score methods.
         ## and warns the user.
         best_model = self._cv_check(quick=quick, verbose=verbose)
 
-        self.cv_preds = cross_val_predict(best_model, self.X, self.y, cv=cv, n_jobs=-1)
+        self.cv_preds = cross_val_predict(best_model, self.X, self.y.values.ravel(), cv=cv, n_jobs=-1)
         self.cv_preds = pd.DataFrame(self.cv_preds, columns=self.targets)
 
 

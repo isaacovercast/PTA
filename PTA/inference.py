@@ -495,7 +495,10 @@ predict() on the estimator prior to calling the cv_predict/cv_score methods.
         ## and warns the user.
         best_model = self._cv_check(quick=quick, verbose=verbose)
 
-        self.cv_preds = cross_val_predict(best_model, self.X, self.y.values.ravel(), cv=cv, n_jobs=-1)
+        ## Here scikit will complain if self.y is 1D (e.g. zeta_e)
+        ## It still works tho, so hush the warnings
+        warnings.filterwarnings('ignore')
+        self.cv_preds = cross_val_predict(best_model, self.X, self.y, cv=cv, n_jobs=-1)
         self.cv_preds = pd.DataFrame(self.cv_preds, columns=self.targets)
 
 

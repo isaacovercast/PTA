@@ -791,7 +791,7 @@ class Regressor(Ensemble):
 
     _default_targets = default_targets
 
-    def __init__(self, empirical_df, sims='', algorithm="rfq", verbose=False):
+    def __init__(self, empirical_df, sims='', algorithm="rf", verbose=False):
         super(Regressor, self).__init__(empirical_df, sims=sims, algorithm=algorithm, verbose=False)
 
         if algorithm == "rf":

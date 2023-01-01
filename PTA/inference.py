@@ -41,7 +41,12 @@ default_targets = ['zeta', 'zeta_e', 'psi', 't_s', 'omega', 'taus_mean', 'taus_s
                     'taus_skewness', 'taus_kurtosis', 'taus_median', 'taus_iqr',\
                     'epsilons_mean', 'epsilons_std', 'epsilons_skewness',\
                     'epsilons_kurtosis', 'epsilons_median', 'epsilons_iqr',\
-                    'Ne_s_mean', 'Ne_s_std', 'Ne_s_skewness', 'Ne_s_kurtosis', 'Ne_s_median', 'Ne_s_iqr']
+                    'Ne_s_mean', 'Ne_s_std', 'Ne_s_skewness', 'Ne_s_kurtosis',\
+                    'Ne_s_median', 'Ne_s_iqr']
+## TODO: Relax the default targets for regression, most of them aren't useful
+## iao 12/2022
+default_targets = ['zeta', 'zeta_e', 't_s', 'omega', 'taus_mean']
+
 
 class Ensemble(object):
     """
@@ -418,7 +423,10 @@ class Ensemble(object):
                 ## TODO: Make default base_model params smarter
                 self.best_model = self._base_model(**self._model_params)
                 self.best_model.set_params(n_jobs=-1)
-                self.best_model.fit(self.X, self.y.values.ravel())
+                ## Here scikit will complain if self.y is 1D (e.g. zeta_e)
+                ## It still works tho, so hush the warnings
+                warnings.filterwarnings('ignore')
+                self.best_model.fit(self.X, self.y)
         if verbose: print("Predict() finished: {}".format(datetime.datetime.now()))
 
 

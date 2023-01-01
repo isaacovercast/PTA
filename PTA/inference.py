@@ -43,10 +43,6 @@ default_targets = ['zeta', 'zeta_e', 'psi', 't_s', 'omega', 'taus_mean', 'taus_s
                     'epsilons_kurtosis', 'epsilons_median', 'epsilons_iqr',\
                     'Ne_s_mean', 'Ne_s_std', 'Ne_s_skewness', 'Ne_s_kurtosis',\
                     'Ne_s_median', 'Ne_s_iqr']
-## TODO: Relax the default targets for regression, most of them aren't useful
-## iao 12/2022
-default_targets = ['zeta', 'zeta_e', 't_s', 'omega', 'taus_mean']
-
 
 class Ensemble(object):
     """
@@ -797,7 +793,7 @@ class Regressor(Ensemble):
         or if you're *really* curious about the process.
     """
 
-    _default_targets = default_targets
+    _default_targets = ["t_s", "omega", "taus_mean"]
 
     def __init__(self, empirical_df, sims='', algorithm="rf", verbose=False):
         super(Regressor, self).__init__(empirical_df, sims=sims, algorithm=algorithm, verbose=False)

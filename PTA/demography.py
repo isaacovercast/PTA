@@ -578,7 +578,7 @@ class DemographicModel(object):
 
                 zeta = self._sample_zeta()
                 # Get effective # of coexpanding taxa
-                zeta_e = int(np.round(zeta * self.paramsdict["npops"]))
+                zeta_e = int(np.ceil(zeta * self.paramsdict["npops"]))
                 psi, pops_per_tau = self.get_pops_per_tau(n_sync=zeta_e)
 
                 LOGGER.debug("sim {} - zeta {} - zeta_e {} - psi {} - pops_per_tau{}".format(i, zeta, zeta_e, psi, pops_per_tau))

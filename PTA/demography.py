@@ -90,11 +90,19 @@ class DemographicModel(object):
         ##  * mu_variance: If this parameter is > 0, then mu will be sampled from a zero-
         ##      truncated normal distribution with mean `muts_per_gen` and variance
         ##      `mu_variance`. If 0, then `muts_per_gen` is a fixed global mutation rate.
+        ##  * Ne_loguniform: Whether to sample Ne values from uniform or loguniform distributions
+        ##  * scale_tau_to_coaltime: Whether to scale tau values to coalescent time.
+        ##      Default (False) returns taus in generations.
+        ##  * tau_buffer: Time (in generations) of buffer around tau values. If 0 then
+        ##      no buffer is used.
         self._hackersonly = dict([
                        ("sorted_sfs", True),
                        ("allow_psi>1", False), 
                        ("proportional_msfs", False),
                        ("mu_variance", 0),
+                       ("Ne_loguniform", True),
+                       ("scale_tau_to_coaltime", False),
+                       ("tau_buffer", 0),
         ])
 
         ## Ne_ave, the expected value of the Ne parameter given a unifrom prior
@@ -391,11 +399,34 @@ class DemographicModel(object):
         tau = self.paramsdict["tau"]
         if isinstance(tau, tuple):
             tau = (tau[0], tau[1]+1)
+
+            if not self._hackersonly["tau_buffer"]:
+                # No buffering, sample random tau values
+                taus = [[np.random.randint(tau[0], tau[1], 1)[0]] * x for x in pops_per_tau]
+            else:
+                # Sample times with buffer
+                tau_min, tau_max = (tau[0], tau[1])
+                buffmax = np.floor((tau_max - tau_min) / (len(pops_per_tau)+1) / 2)
+                if not buffmax < self._hackersonly["tau_buffer"]:
+                    # If tau_buffer less than buffmax use user specified buffer value
+                    # otherwise enforce buffmax to allow all pops to get viable taus
+                    buffmax = self._hackersonly["tau_buffer"]
+
+                domain = range(int(tau_min), int(tau_max), 100)
+                taus = []
+                for i in range(len(pops_per_tau)):
+                    tau = np.random.choice(domain)
+                    domain = [x for x in domain if x <= tau - buffmax or x >= tau + buffmax]
+                    taus.append(tau)
+
+                taus = [[y] * x for y, x in zip(taus, pops_per_tau)]
+
+            # Collapse the list of lists to a single list with ts per population
+            taus = np.array(list(itertools.chain.from_iterable(taus)))
+
         else:
-            tau = (tau, tau+1)
-        taus = [[np.random.randint(tau[0], tau[1], 1)[0]] * x for x in pops_per_tau]
-        # Collapse the list of lists to a single list with ts per population
-        taus = np.array(list(itertools.chain.from_iterable(taus)))
+            # Tau invariable, so fix all times to the same value
+            taus = np.array([tau] * self.paramsdict["npops"])
 
         # Scale years to generations
         taus = taus/self.paramsdict["generation_time"]
@@ -432,7 +463,10 @@ class DemographicModel(object):
     def _sample_Ne(self, nsamps=1):
         N_e = self.paramsdict["N_e"]
         if isinstance(N_e, tuple):
-            N_e = np.random.randint(N_e[0], N_e[1]+1, nsamps)
+            if self._hackersonly["Ne_loguniform"]:
+                N_e = np.exp(np.random.uniform(np.log(N_e[0]), np.log(N_e[1]+1), nsamps))
+            else:
+                N_e = np.random.randint(N_e[0], N_e[1]+1, nsamps)
         else:
             N_e = np.array([N_e] * nsamps)
         return N_e
@@ -605,10 +639,11 @@ class DemographicModel(object):
                                 sort=self._hackersonly["sorted_sfs"],\
                                 proportions=self._hackersonly["proportional_msfs"])
 
-                ## Scale time to coalsecent units
-                ## Here taus in generations already, so scale to coalescent units
-                ## assuming diploid so 2 * 2Ne
-                taus = taus/(4*self._Ne_ave)
+                if self._hackersonly["scale_tau_to_coaltime"]:
+                    ## Scale time to coalescent units
+                    ## Here taus in generations already, so scale to coalescent units
+                    ## assuming diploid so 2 * 2Ne
+                    taus = taus/(4*self._Ne_ave)
 
                 ## In the pipe_master model the first tau in the list is the co-expansion time
                 ## If/when you get around to doing the msbayes model of multiple coexpansion

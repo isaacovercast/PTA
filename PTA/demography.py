@@ -116,6 +116,10 @@ class DemographicModel(object):
     #########################
     ## Housekeeping functions
     #########################
+    def __repr__(self):
+        return self.get_params()
+
+
     def __str__(self):
         return "<PTA.DemographicModel: {}>".format(self.paramsdict["simulation_name"])
 

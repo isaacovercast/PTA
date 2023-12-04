@@ -13,43 +13,48 @@ from collections import OrderedDict
 ## https://github.com/scipy/scipy/issues/16765
 warnings.simplefilter('ignore', RuntimeWarning)
 
+np.set_printoptions(suppress=True)
+
 class JointMultiSFS(object):
     def __init__(self, sfs_list, sort=False, proportions=False):
         '''
         sfs_list: A list of dadi sfs files containing 2D sfs
         '''
         self.ntaxa = len(sfs_list)
-        ## The shape of all incoming jSFS (must all be the same shape)
-        self.jsfs_shape = self._get_jsfs_shape(sfs_list[0])
 
-        ## Load the data for each 2D sfs into a temp list
-        tmpjMSFS = []
-        for f in sfs_list:
-            tmp_jsfs_shape = self._get_jsfs_shape(f)
-            if not tmp_jsfs_shape == self.jsfs_shape:
-                raise Exception("All 2D-SFS must have the same dimensions")
+        # sfs_list may be either a list of file names or an np.array
+        if isinstance(sfs_list[0], np.ndarray):
+            # This will take both a list of np.arrays or a properly formatted 3d array
+            self.jsfs_shape = sfs_list[0].shape
+            self.jMSFS = np.array(sfs_list)
 
-            dat = open(f).readlines()
-            sfs_dat = np.array(dat[1].split(), dtype=float)
-            sfs_dat = sfs_dat.reshape(self.jsfs_shape)
-            ## Rescale sfs bins to proportions
-            if proportions:
-                sfs_dat = sfs_dat/sfs_dat.sum()
+        elif isinstance(sfs_list[0], str):
+            ## The shape of all incoming jSFS (must all be the same shape)
+            self.jsfs_shape = self._get_jsfs_shape(sfs_list[0])
 
-            tmpjMSFS.append(sfs_dat)
-        
-        ## Whether to sort each bin of the jMSFS from greatest to smallest
+            ## Load the data for each 2D sfs into a temp list
+            tmpjMSFS = []
+            for f in sfs_list:
+                tmp_jsfs_shape = self._get_jsfs_shape(f)
+                if not tmp_jsfs_shape == self.jsfs_shape:
+                    raise Exception("All 2D-SFS must have the same dimensions")
+
+                dat = open(f).readlines()
+                sfs_dat = np.array(dat[1].split(), dtype=float)
+                sfs_dat = sfs_dat.reshape(self.jsfs_shape)
+                tmpjMSFS.append(sfs_dat)
+
+            self.jMSFS = np.array(tmpjMSFS)
+
+        ## Rescale sfs bins to proportions
+        if proportions:
+            for idx, _ in enumerate(self.jMSFS):
+                self.jMSFS[idx] = self.jMSFS[idx]/self.jMSFS[idx].sum()
+
+        ## Calc proportions within sfs before sorting across sfs to better
+        ## control for differences in # of snps for a given species pair
         if sort:
-            ## Sorted jMSFS bins
-            ## This is probably overly complex, but it works
-            self.jMSFS = np.sort(np.dstack(tmpjMSFS))
-            self.jMSFS = np.transpose(self.jMSFS[:, :, ::-1], axes=[2,0,1])
-
-        else:
-            ## Unsorted jMSFS bins
-            ## Combine all the jsfs all the jsfs into an n-dimensional matrix
-            self.jMSFS = np.concatenate(tmpjMSFS, axis=0)
-            self.jMSFS = self.jMSFS.reshape(self.ntaxa, self.jsfs_shape[0], self.jsfs_shape[1])
+            self.jMSFS = np.sort(self.jMSFS, axis=0)[::-1]
 
 
     def _get_jsfs_shape(self, sfs_file):

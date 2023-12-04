@@ -16,7 +16,7 @@ warnings.simplefilter('ignore', RuntimeWarning)
 np.set_printoptions(suppress=True)
 
 class JointMultiSFS(object):
-    def __init__(self, sfs_list, sort=False, proportions=False):
+    def __init__(self, sfs_list, sort=False, proportions=False, mask_corners=True):
         '''
         sfs_list: A list of dadi sfs files containing 2D sfs
         '''
@@ -45,6 +45,12 @@ class JointMultiSFS(object):
                 tmpjMSFS.append(sfs_dat)
 
             self.jMSFS = np.array(tmpjMSFS)
+
+        ## Mask monomorphic bins (ancestral/ derived in all)
+        if mask_corners:
+            for idx, _ in enumerate(self.jMSFS):
+                self.jMSFS[idx][0, 0]  = 0
+                self.jMSFS[idx][-1, -1]  = 0
 
         ## Rescale sfs bins to proportions
         if proportions:

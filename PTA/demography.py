@@ -72,7 +72,14 @@ class DemographicModel(object):
                        ("num_replicates", 100),
                        ("generation_time", 1),
                        ("recoms_per_gen", 1e-9),
-                       ("muts_per_gen", 1e-8)
+                       ("muts_per_gen", 1e-8),
+                       # 2D SFS parameters
+                       ("t_recent_change", 80),
+                       ("t_historic_samp", 110),
+                       ("t_ancestral_change", 15000),
+                       ("ne_ancestral", 100000),
+                       ("r_modern", -0.1),
+                       ("r_ancestral", 0),
         ])
 
         ## Separator to use for reading/writing files
@@ -229,7 +236,13 @@ class DemographicModel(object):
                 self.paramsdict[param] = float(newvalue)
 
             else:
-                self.paramsdict[param] = newvalue
+                try:
+                    self.paramsdict[param] = int(newvalue)
+                except:
+                    try:
+                        self.paramsdict[param] = float(newvalue)
+                    except:
+                        self.paramsdict[param] = newvalue
         except Exception as inst:
             ## Do something intelligent here?
             raise
@@ -900,8 +913,27 @@ class DemographicModel(object):
         ## sort=False suppresses a warning about non-concatenation index if
         ## SIMOUT is empty
         msfs_df = pd.DataFrame(pd.concat([x.to_dataframe() for x in msfs_list], sort=False)).fillna(0)
+        # Map sfs bin column names to str to prevent confusion between int/str column names
+        msfs_df.columns = msfs_df.columns.map(str)
+
         dat = pd.concat([dat, msfs_df], sort=False)
         dat.to_csv(simfile, header=True, index=False, sep=self._sep, float_format='%.3f')
+
+
+
+    def load_simulations(self, nrows=50):
+        """
+        Load in the simulation data, if it exists.
+        """
+        simfile = os.path.join(self.paramsdict["project_dir"], "{}-SIMOUT.csv".format(self.name))
+        if not os.path.exists(simfile):
+            raise PTAError("No simulations exist for {}".format(self.name))
+
+        dat = pd.read_csv(simfile, sep=" ")
+
+        # Split the params and jsfs data
+        # The dataframe is formated so that the first bin of the jMSFS is 0
+        idx = dat.columns.get_loc(0)
 
 
     def _write_simout(self, msfs_list, force=False):
@@ -1094,6 +1126,12 @@ PARAMS = {
     "generation_time" : "Generation time in years",\
     "recoms_per_gen" : "Recombination rate within independent regions scaled per base per generation",\
     "muts_per_gen" : "Mutation rate scaled per base per generation",\
+    "t_recent_change": "Time of recent size change (years)",\
+    "t_historic_samp": "Time the historical sample was taken (years)",\
+    "t_ancestral_change": "Time of ancestral size change (years)",\
+    "ne_ancestral": "Ancestral Ne",\
+    "r_modern": "Growth rate between time 0 and t_recent_change",\
+    "r_ancestral": "Growth rate between t_ancestral_change and t_recent_change",\
 }
 
 

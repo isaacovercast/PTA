@@ -62,6 +62,8 @@ class JointMultiSFS(object):
         if sort:
             self.jMSFS = np.sort(self.jMSFS, axis=0)[::-1]
 
+        self.shape = self.jMSFS.shape
+
 
     def _get_jsfs_shape(self, sfs_file):
         try:
@@ -84,6 +86,16 @@ class JointMultiSFS(object):
 
     def to_string(self):
         return np.round(self.jMSFS, decimals=4)
+
+
+    def to_dataframe(self):
+        jmsfs_dat = pd.DataFrame(self.jMSFS.flatten()).T
+
+        if not self.stats.empty:
+            ## empirical data won't have stats, so don't write it
+            jmsfs_dat = self.stats.merge(jmsfs_dat, how="cross")
+
+        return jmsfs_dat
 
 
     def dump(self, outdir="", outfile="", full=False):
@@ -129,7 +141,6 @@ class JointMultiSFS(object):
     ## What's coming in is pd.Series([zeta, zeta_e, psi, pops_per_tau, taus, epsilons, N_es]
     ## zeta_e is 'effective zeta', the # of populations co-expanding
     def set_params(self, params):
-        raise Exception("JointMultiSFS.set_params not implemented")
         self._full_params = params
 
         ## Convenience apparatus to make calculating the moments easier
@@ -172,9 +183,9 @@ class JointMultiSFS(object):
         self.stats = pd.DataFrame(stat_dict, index=["0"])
 
 
-    def plot_2d_sfs(self, sfs_idx=0, vmin=None, vmax=None, ax=None, 
+    def plot_2d_sfs(self, sfs_idx=None, vmin=None, vmax=None, ax=None, 
                            pop_ids=None, extend='neither', colorbar=True,
-                           cmap=matplotlib.pyplot.cm.viridis_r):
+                           plot_residuals=False, cmap=matplotlib.pyplot.cm.viridis_r):
         """
         Heatmap of single 2d SFS. Extensively borrowed from DADI package plotting
         functions.
@@ -182,7 +193,14 @@ class JointMultiSFS(object):
         sfs_idx: The index of the individual 2D-sfs to plot
         """
 
-        sfs = self.jMSFS[sfs_idx]
+        # If no sfs_idx is passed in then take the average value across all sfs bins
+        if sfs_idx is None:
+            sfs = self.jMSFS.mean(axis=0)
+        else:
+            sfs = self.jMSFS[sfs_idx]
+
+        if plot_residuals:
+            sfs = np.tril(sfs) - np.triu(sfs).T
 
         if ax is None:
             ax = matplotlib.pyplot.gca()

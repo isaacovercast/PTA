@@ -172,17 +172,25 @@ class JointMultiSFS(object):
         self.stats = pd.DataFrame(stat_dict, index=["0"])
 
 
-    def plot_2d_sfs(self, sfs_idx=0, vmin=None, vmax=None, ax=None, 
+    def plot_2d_sfs(self, sfs_idx=None, vmin=None, vmax=None, ax=None, 
                            pop_ids=None, extend='neither', colorbar=True,
-                           cmap=matplotlib.pyplot.cm.viridis_r):
+                           plot_residuals=False, cmap=matplotlib.pyplot.cm.viridis):
         """
         Heatmap of single 2d SFS. Extensively borrowed from DADI package plotting
         functions.
 
-        sfs_idx: The index of the individual 2D-sfs to plot
+        sfs_idx: The index of the individual 2D-sfs to plot. If no value is given
+                 plot the mean across all jSFS per bin
         """
 
-        sfs = self.jMSFS[sfs_idx]
+        # If no sfs_idx is passed in then take the average value across all sfs bins
+        if sfs_idx is None:
+            sfs = self.jMSFS.mean(axis=0)
+        else:
+            sfs = self.jMSFS[sfs_idx]
+
+        if plot_residuals:
+            sfs = np.tril(sfs) - np.triu(sfs).T
 
         if ax is None:
             ax = matplotlib.pyplot.gca()

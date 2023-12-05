@@ -103,6 +103,7 @@ class DemographicModel(object):
                        ("Ne_loguniform", True),
                        ("scale_tau_to_coaltime", False),
                        ("tau_buffer", 0),
+                       ("sfs_dim", 1),
         ])
 
         ## Ne_ave, the expected value of the Ne parameter given a unifrom prior
@@ -208,7 +209,18 @@ class DemographicModel(object):
                     raise PTAError(BAD_NUM_REPLICATES.format(len(newvalue),\
                                                              self.paramsdict["npops"]))
 
-            elif param in ["npops", "nsamsp", "length"]:
+            elif param in ["nsamps"]:
+                tup = tuplecheck(newvalue, islist=True, dtype=int)
+                if isinstance(tup, tuple) or isinstance(tup, list):
+                    if len(tup) > 2:
+                        raise PTAError("{} limited to 2-dimension. You put {}".format(param, tup))
+                    elif len(tup) == 2:
+                        self._hackersonly["sfs_dim"] = 2
+                    else:
+                        self._hackersonly["sfs_dim"] = 1
+                self.paramsdict[param] = tup
+
+            elif param in ["npops", "length"]:
                 self.paramsdict[param] = int(newvalue)
 
             elif param in ["generation_time", "recoms_per_gen", "muts_per_gen", "zeta"]:
@@ -668,6 +680,73 @@ class DemographicModel(object):
         return msfs_list
 
 
+    def serial_simulate_2d(self, nsims=1, quiet=False, verbose=False):
+        import pandas as pd
+        npops = self.paramsdict["npops"]
+
+        msfs_list = []
+
+        printstr = " Performing Simulations    | {} |"
+        start = time.time()
+        for i in range(nsims):
+            try:
+                elapsed = datetime.timedelta(seconds=int(time.time()-start))
+                if not quiet: progressbar(nsims, i, printstr.format(elapsed))
+
+                zeta = self._sample_zeta()
+                # Get effective # of coexpanding taxa
+                zeta_e = int(np.ceil(zeta * self.paramsdict["npops"]))
+                psi, pops_per_tau = self.get_pops_per_tau(n_sync=zeta_e)
+
+                LOGGER.debug("sim {} - zeta {} - zeta_e {} - psi {} - pops_per_tau{}".format(i, zeta, zeta_e, psi, pops_per_tau))
+                # All taus, epsilons, and N_es will be the length of npops
+                # taus here will be in generations not years
+                taus = self._sample_tau(pops_per_tau)
+                epsilons = self._sample_epsilon(pops_per_tau)
+                N_es = self._sample_Ne(self.paramsdict["npops"])
+                num_replicates = self._check_numreplicates()
+                sfs_list = []
+                idx = 0
+                for tidx, tau_pops in enumerate(pops_per_tau):
+                    for pidx in range(tau_pops):
+                        name = "pop{}-{}".format(tidx, pidx)
+                        ## FIXME: Here the co-expanding pops all receive the same
+                        ## epsilon. Probably not the best way to do it.
+                        sfs_list.append(self._simulate_2d(name,
+                                                N_e=N_es[idx],
+                                                tau=taus[idx],
+                                                epsilon=epsilons[idx],
+                                                num_replicates=num_replicates[idx]))
+                    idx += 1
+                msfs = multiSFS(sfs_list,\
+                                sort=self._hackersonly["sorted_sfs"],\
+                                proportions=self._hackersonly["proportional_msfs"])
+
+                if self._hackersonly["scale_tau_to_coaltime"]:
+                    ## Scale time to coalescent units
+                    ## Here taus in generations already, so scale to coalescent units
+                    ## assuming diploid so 2 * 2Ne
+                    taus = taus/(4*self._Ne_ave)
+
+                ## In the pipe_master model the first tau in the list is the co-expansion time
+                ## If/when you get around to doing the msbayes model of multiple coexpansion
+                ## pulses, then this will have to change 
+                msfs.set_params(pd.Series([zeta, zeta_e, psi, taus[0], pops_per_tau, taus, epsilons, N_es],\
+                                        index=["zeta", "zeta_e", "psi", "t_s", "pops_per_tau", "taus", "epsilons", "N_es"]))
+                msfs_list.append(msfs)
+
+            except KeyboardInterrupt as inst:
+                print("\n    Cancelling remaining simulations")
+                break
+            except Exception as inst:
+                LOGGER.debug("Simulation failed: {}".format(inst))
+                raise PTAError("Failed inside serial_simulate: {}".format(inst))
+
+        if not quiet: progressbar(100, 100, " Finished {} simulations in   {}\n".format(i+1, elapsed))
+
+        return msfs_list
+
+
     def _simulate(self,
                     name,
                     N_e=1e6,
@@ -701,6 +780,17 @@ class DemographicModel(object):
             raise PTAError("Can't extract SFS from a simulation with no variation. Check that muts_per_gen looks reasonable.")
 
         return sfs
+
+
+    def _simulate_2d(self,
+                    name,
+                    N_e=1e6,
+                    tau=20000,
+                    epsilon=10,
+                    num_replicates=100,
+                    verbose=False):
+
+        return jmsfs
 
     
     def simulate(self, nsims=1, ipyclient=None, quiet=False, verbose=False, force=False):

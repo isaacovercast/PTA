@@ -277,9 +277,13 @@ def main():
                format(args.new, os.path.realpath(os.path.curdir)))
         sys.exit(2)
 
-
-    ## if params then must provide action argument with it
+    ## Some basic checking of input parameters
     if args.params:
+        ## The -m parameter is only used with -n
+        if args.model_type:
+            print(NO_M_WITH_P_ERROR)
+            sys.exit(2)
+        ## if params then must provide action argument with it
         if not any([args.sims]):
             print(PTA_USAGE)
             sys.exit(2)
@@ -339,6 +343,12 @@ BAD_MODEL_TYPE_ERROR = """
         2D_Temporal
 
     You put: {}
+"""
+
+NO_M_WITH_P_ERROR = """
+    Specifying -m with -p <params> has no effect, as -m parameter is only used
+    upon creation of a new params file (-n). If you wish to specify a different
+    model you must create a new params file using both -n and -m.
 """
 
 PTA_HEADER = \

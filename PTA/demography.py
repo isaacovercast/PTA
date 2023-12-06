@@ -74,12 +74,12 @@ class DemographicModel(object):
                        ("recoms_per_gen", 1e-9),
                        ("muts_per_gen", 1e-8),
                        # 2D SFS parameters
-                       ("t_recent_change", 80),
-                       ("t_historic_samp", 110),
-                       ("t_ancestral_change", 15000),
-                       ("ne_ancestral", 100000),
-                       ("r_modern", -0.1),
-                       ("r_ancestral", 0),
+#                       ("t_recent_change", 80),
+#                       ("t_historic_samp", 110),
+#                       ("t_ancestral_change", 15000),
+#                       ("ne_ancestral", 100000),
+#                       ("r_modern", -0.1),
+#                       ("r_ancestral", 0),
         ])
 
         ## Separator to use for reading/writing files
@@ -261,11 +261,7 @@ class DemographicModel(object):
     def set_param(self, param, value, quiet=True):
         """
         A convenience function for setting parameters in the API mode, which
-        turns out to be a little annoying if you don't provide this. With
-        the set_param method you can set parameters on the Region, the
-        Metacommunity, or the LocalCommunity. Simply pass the parameter
-        name and the value, and this method identifies the appropriate target
-        parameter.
+        turns out to be a little annoying if you don't provide this.
 
         :param string param: The name of the parameter to set.
         :param value: The value of the parameter to set.
@@ -320,7 +316,9 @@ class DemographicModel(object):
 
         with open(outfile, 'w') as paramsfile:
             ## Write the header. Format to 80 columns
-            header = "------- PTA params file (v.{})".format(PTA.__version__)
+            header = "------- PTA params - {} - (v.{}) ".format(\
+                                    str(type(self)).split('.')[-1].split('\'')[0],\
+                                    PTA.__version__)
             header += ("-"*(80-len(header)))
             paramsfile.write(header)
 
@@ -695,73 +693,73 @@ class DemographicModel(object):
         return msfs_list
 
 
-    def serial_simulate_2d(self, nsims=1, quiet=False, verbose=False):
-        import pandas as pd
-        npops = self.paramsdict["npops"]
-
-        jmsfs_list = []
-
-        printstr = " Performing Simulations    | {} |"
-        start = time.time()
-        for i in range(nsims):
-            try:
-                elapsed = datetime.timedelta(seconds=int(time.time()-start))
-                if not quiet: progressbar(nsims, i, printstr.format(elapsed))
-
-                zeta = self._sample_zeta()
-                # Get effective # of coexpanding taxa
-                zeta_e = int(np.ceil(zeta * self.paramsdict["npops"]))
-                psi, pops_per_tau = self.get_pops_per_tau(n_sync=zeta_e)
-
-                LOGGER.debug("sim {} - zeta {} - zeta_e {} - psi {} - pops_per_tau{}".format(i, zeta, zeta_e, psi, pops_per_tau))
-                # All taus, epsilons, and N_es will be the length of npops
-                # taus here will be in generations not years
-                taus = self._sample_tau(pops_per_tau)
-                epsilons = self._sample_epsilon(pops_per_tau)
-                N_es = self._sample_Ne(self.paramsdict["npops"])
-                num_replicates = self._check_numreplicates()
-                sfs_list = []
-                idx = 0
-                for tidx, tau_pops in enumerate(pops_per_tau):
-                    for pidx in range(tau_pops):
-                        name = "pop{}-{}".format(tidx, pidx)
-                        ## FIXME: Here the co-expanding pops all receive the same
-                        ## epsilon. Probably not the best way to do it.
-                        sfs_list.append(self._simulate_2d(t_recent_change=80,
-                                                t_historic_samp=110,
-                                                t_ancestral_change=15000,
-                                                ne_ancestral=100000,
-                                                r_modern=-0.1,
-                                                r_ancestral=0,
-                                                ))
-                    idx += 1
-                jmsfs = JointMultiSFS(sfs_list,\
-                                sort=self._hackersonly["sorted_sfs"],\
-                                proportions=self._hackersonly["proportional_msfs"])
-
-                if self._hackersonly["scale_tau_to_coaltime"]:
-                    ## Scale time to coalescent units
-                    ## Here taus in generations already, so scale to coalescent units
-                    ## assuming diploid so 2 * 2Ne
-                    taus = taus/(4*self._Ne_ave)
-
-                ## In the pipe_master model the first tau in the list is the co-expansion time
-                ## If/when you get around to doing the msbayes model of multiple coexpansion
-                ## pulses, then this will have to change 
-                jmsfs.set_params(pd.Series([zeta, zeta_e, psi, taus[0], pops_per_tau, taus, epsilons, N_es],\
-                                        index=["zeta", "zeta_e", "psi", "t_s", "pops_per_tau", "taus", "epsilons", "N_es"]))
-                jmsfs_list.append(jmsfs)
-
-            except KeyboardInterrupt as inst:
-                print("\n    Cancelling remaining simulations")
-                break
-            except Exception as inst:
-                LOGGER.debug("Simulation failed: {}".format(inst))
-                raise PTAError("Failed inside serial_simulate: {}".format(inst))
-
-        if not quiet: progressbar(100, 100, " Finished {} simulations in   {}\n".format(i+1, elapsed))
-
-        return jmsfs_list
+#    def serial_simulate_2d(self, nsims=1, quiet=False, verbose=False):
+#        import pandas as pd
+#        npops = self.paramsdict["npops"]
+#
+#        jmsfs_list = []
+#
+#        printstr = " Performing Simulations    | {} |"
+#        start = time.time()
+#        for i in range(nsims):
+#            try:
+#                elapsed = datetime.timedelta(seconds=int(time.time()-start))
+#                if not quiet: progressbar(nsims, i, printstr.format(elapsed))
+#
+#                zeta = self._sample_zeta()
+#                # Get effective # of coexpanding taxa
+#                zeta_e = int(np.ceil(zeta * self.paramsdict["npops"]))
+#                psi, pops_per_tau = self.get_pops_per_tau(n_sync=zeta_e)
+#
+#                LOGGER.debug("sim {} - zeta {} - zeta_e {} - psi {} - pops_per_tau{}".format(i, zeta, zeta_e, psi, pops_per_tau))
+#                # All taus, epsilons, and N_es will be the length of npops
+#                # taus here will be in generations not years
+#                taus = self._sample_tau(pops_per_tau)
+#                epsilons = self._sample_epsilon(pops_per_tau)
+#                N_es = self._sample_Ne(self.paramsdict["npops"])
+#                num_replicates = self._check_numreplicates()
+#                sfs_list = []
+#                idx = 0
+#                for tidx, tau_pops in enumerate(pops_per_tau):
+#                    for pidx in range(tau_pops):
+#                        name = "pop{}-{}".format(tidx, pidx)
+#                        ## FIXME: Here the co-expanding pops all receive the same
+#                        ## epsilon. Probably not the best way to do it.
+#                        sfs_list.append(self._simulate_2d(t_recent_change=80,
+#                                                t_historic_samp=110,
+#                                                t_ancestral_change=15000,
+#                                                ne_ancestral=100000,
+#                                                r_modern=-0.1,
+#                                                r_ancestral=0,
+#                                                ))
+#                    idx += 1
+#                jmsfs = JointMultiSFS(sfs_list,\
+#                                sort=self._hackersonly["sorted_sfs"],\
+#                                proportions=self._hackersonly["proportional_msfs"])
+#
+#                if self._hackersonly["scale_tau_to_coaltime"]:
+#                    ## Scale time to coalescent units
+#                    ## Here taus in generations already, so scale to coalescent units
+#                    ## assuming diploid so 2 * 2Ne
+#                    taus = taus/(4*self._Ne_ave)
+#
+#                ## In the pipe_master model the first tau in the list is the co-expansion time
+#                ## If/when you get around to doing the msbayes model of multiple coexpansion
+#                ## pulses, then this will have to change 
+#                jmsfs.set_params(pd.Series([zeta, zeta_e, psi, taus[0], pops_per_tau, taus, epsilons, N_es],\
+#                                        index=["zeta", "zeta_e", "psi", "t_s", "pops_per_tau", "taus", "epsilons", "N_es"]))
+#                jmsfs_list.append(jmsfs)
+#
+#            except KeyboardInterrupt as inst:
+#                print("\n    Cancelling remaining simulations")
+#                break
+#            except Exception as inst:
+#                LOGGER.debug("Simulation failed: {}".format(inst))
+#                raise PTAError("Failed inside serial_simulate: {}".format(inst))
+#
+#        if not quiet: progressbar(100, 100, " Finished {} simulations in   {}\n".format(i+1, elapsed))
+#
+#        return jmsfs_list
 
 
     def _simulate(self,
@@ -799,63 +797,63 @@ class DemographicModel(object):
         return sfs
 
 
-    def _simulate_2d(self,
-                    t_recent_change=80,
-                    t_historic_samp=110,
-                    t_ancestral_change=15000,
-                    ne_ancestral=100000,
-                    r_modern=-0.1,
-                    r_ancestral=0,
-                    debug=False,
-                    verbose=False):
-
-        n_albatross = self.paramsdict["nsamps"][0]
-        n_contemp = self.paramsdict["nsamps"][1]
-        gentime = self.paramsdict["generation_time"]
-        mu = self.paramsdict["muts_per_gen"]
-
-        ne_historic=ne_ancestral/np.exp(-(r_ancestral)*((t_ancestral_change-t_historic_samp)/gentime))
-        ne_contemp=ne_historic/np.exp(-(r_modern)*(t_recent_change/gentime))
-
-        dem=msprime.Demography()
-        dem.add_population(name="C",initial_size=ne_contemp)
-        dem.add_population_parameters_change(time=0, growth_rate=r_modern)
-        dem.add_population_parameters_change(time=(t_recent_change/gentime), growth_rate=0)
-        dem.add_population_parameters_change(time=(t_historic_samp/gentime), growth_rate=r_ancestral)
-        dem.add_population_parameters_change(time=(t_ancestral_change/gentime), growth_rate=0)
-
-        if debug:
-            history = msprime.DemographyDebugger(demography=dem)
-            print(history)
-
-        n_loci = self.paramsdict["num_replicates"][0]
-        length = self.paramsdict["length"]
-
-        n_sites = n_loci * length-1
-        rateseq = [0,0.5] * n_loci
-        unlinkedloci_rates = rateseq[:-1]
-        loci_startpoints = [x*length for x in list(range(n_loci))]
-        loci_endpoints = [(x+1)*length-1 for x in list(range(n_loci))]
-        loci_boundaries = sorted(loci_startpoints + loci_endpoints)
-        rate_map = msprime.RateMap(position=loci_boundaries, rate=unlinkedloci_rates)
-
-        albatross_sampset = msprime.SampleSet(n_albatross, time=round(t_historic_samp/gentime))
-        contemporary_sampset = msprime.SampleSet(n_contemp)
-        ts = msprime.sim_ancestry(
-            samples=[contemporary_sampset,albatross_sampset],
-            demography=dem,
-            recombination_rate=rate_map,
-            sequence_length=n_sites
-        )
-        mts=msprime.sim_mutations(ts, rate=mu)
-
-        contemp_list=list(range(n_contemp*2))
-        albatross_list=[x+n_contemp*2 for x in list(range(n_albatross*2))]
-        jsfs = mts.allele_frequency_spectrum(sample_sets=[albatross_list, contemp_list],
-                                             mode="site",
-                                             span_normalise=False)
-
-        return jsfs
+#    def _simulate_2d(self,
+#                    t_recent_change=80,
+#                    t_historic_samp=110,
+#                    t_ancestral_change=15000,
+#                    ne_ancestral=100000,
+#                    r_modern=-0.1,
+#                    r_ancestral=0,
+#                    debug=False,
+#                    verbose=False):
+#
+#        n_albatross = self.paramsdict["nsamps"][0]
+#        n_contemp = self.paramsdict["nsamps"][1]
+#        gentime = self.paramsdict["generation_time"]
+#        mu = self.paramsdict["muts_per_gen"]
+#
+#        ne_historic=ne_ancestral/np.exp(-(r_ancestral)*((t_ancestral_change-t_historic_samp)/gentime))
+#        ne_contemp=ne_historic/np.exp(-(r_modern)*(t_recent_change/gentime))
+#
+#        dem=msprime.Demography()
+#        dem.add_population(name="C",initial_size=ne_contemp)
+#        dem.add_population_parameters_change(time=0, growth_rate=r_modern)
+#        dem.add_population_parameters_change(time=(t_recent_change/gentime), growth_rate=0)
+#        dem.add_population_parameters_change(time=(t_historic_samp/gentime), growth_rate=r_ancestral)
+#        dem.add_population_parameters_change(time=(t_ancestral_change/gentime), growth_rate=0)
+#
+#        if debug:
+#            history = msprime.DemographyDebugger(demography=dem)
+#            print(history)
+#
+#        n_loci = self.paramsdict["num_replicates"][0]
+#        length = self.paramsdict["length"]
+#
+#        n_sites = n_loci * length-1
+#        rateseq = [0,0.5] * n_loci
+#        unlinkedloci_rates = rateseq[:-1]
+#        loci_startpoints = [x*length for x in list(range(n_loci))]
+#        loci_endpoints = [(x+1)*length-1 for x in list(range(n_loci))]
+#        loci_boundaries = sorted(loci_startpoints + loci_endpoints)
+#        rate_map = msprime.RateMap(position=loci_boundaries, rate=unlinkedloci_rates)
+#
+#        albatross_sampset = msprime.SampleSet(n_albatross, time=round(t_historic_samp/gentime))
+#        contemporary_sampset = msprime.SampleSet(n_contemp)
+#        ts = msprime.sim_ancestry(
+#            samples=[contemporary_sampset,albatross_sampset],
+#            demography=dem,
+#            recombination_rate=rate_map,
+#            sequence_length=n_sites
+#        )
+#        mts=msprime.sim_mutations(ts, rate=mu)
+#
+#        contemp_list=list(range(n_contemp*2))
+#        albatross_list=[x+n_contemp*2 for x in list(range(n_albatross*2))]
+#        jsfs = mts.allele_frequency_spectrum(sample_sets=[albatross_list, contemp_list],
+#                                             mode="site",
+#                                             span_normalise=False)
+#
+#        return jsfs
 
     
     def simulate(self, nsims=1, ipyclient=None, quiet=False, verbose=False, force=False):
@@ -884,11 +882,7 @@ class DemographicModel(object):
         if ipyclient:
             msfs_list = self.parallel_simulate(ipyclient, nsims=nsims, quiet=quiet, verbose=verbose)
         else:
-            # Run simulations serially
-            if self._hackersonly["sfs_dim"] == 2:
-                msfs_list = self.serial_simulate_2d(nsims=nsims, quiet=quiet, verbose=verbose)
-            else:
-                msfs_list = self.serial_simulate(nsims=nsims, quiet=quiet, verbose=verbose)
+            msfs_list = self.serial_simulate(nsims=nsims, quiet=quiet, verbose=verbose)
 
         self._write_df(msfs_list, force=force)
 
@@ -933,7 +927,15 @@ class DemographicModel(object):
 
         # Split the params and jsfs data
         # The dataframe is formated so that the first bin of the jMSFS is 0
-        idx = dat.columns.get_loc(0)
+        idx = dat.columns.get_loc('0')
+        params = dat.iloc[:nrows, :idx]
+        jmsfs = dat.iloc[:nrows, idx:]
+        nrows = min(len(jmsfs), nrows)
+        jmsfs = jmsfs.values.reshape(nrows,
+                            self.paramsdict["npops"],
+                            self.paramsdict["nsamps"][0]*2+1,
+                            self.paramsdict["nsamps"][1]*2+1)
+        return params, jmsfs
 
 
     def _write_simout(self, msfs_list, force=False):
@@ -978,10 +980,7 @@ class DemographicModel(object):
 def serial_simulate(model, nsims=1, quiet=False, verbose=False):
     import os
     LOGGER.debug("Entering sim - {} on pid {}\n{}".format(model, os.getpid(), model.paramsdict))
-    if model._hackersonly["sfs_dim"] == 2:
-        res = model.serial_simulate_2d(nsims, quiet=quiet, verbose=verbose)
-    else:
-        res = model.serial_simulate(nsims, quiet=quiet, verbose=verbose)
+    res = model.serial_simulate(nsims, quiet=quiet, verbose=verbose)
     LOGGER.debug("Leaving sim - {} on pid {}".format(model, os.getpid()))
     return res
 

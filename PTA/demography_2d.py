@@ -1,0 +1,206 @@
+import datetime
+import msprime
+import numpy as np
+import os
+import pandas as pd
+import time
+
+import PTA
+from PTA.util import *
+from PTA.jmsfs import *
+
+class DemographicModel_2D_Temporal(PTA.DemographicModel):
+    def __init__(self, name, quiet=False, verbose=False):
+        super().__init__(name, quiet, verbose)
+
+        self.paramsdict = OrderedDict([
+               ("simulation_name", name),
+               ("project_dir", "./default_PTA"),
+               ("npops", 10),
+               ("nsamps", [4, 4]),
+               ("zeta", 0),
+               ("length", 1000),
+               ("num_replicates", 100),
+               ("generation_time", 1),
+               ("recoms_per_gen", 1e-9),
+               ("muts_per_gen", 1e-8),
+               ("t_recent_change", 80),
+               ("t_historic_samp", 110),
+               ("t_ancestral_change", 15000),
+               ("ne_ancestral", 100000),
+               ("r_modern", -0.1),
+               ("r_ancestral", 0),
+    ])
+
+
+    def _sample_Ne(self, nsamps=1):
+        N_e = self.paramsdict["ne_ancestral"]
+        if isinstance(N_e, tuple):
+            if self._hackersonly["Ne_loguniform"]:
+                N_e = np.exp(np.random.uniform(np.log(N_e[0]), np.log(N_e[1]+1), nsamps))
+            else:
+                N_e = np.random.randint(N_e[0], N_e[1]+1, nsamps)
+        else:
+            N_e = np.array([N_e] * nsamps)
+        return N_e
+
+
+    def _sample_zeta(self):
+        """
+        If zeta is specified in the params dict, then just use this value. If zeta
+        is zero (the default), then sample a random value between [0, 1).
+        """
+        zeta = self.paramsdict["zeta"]
+        zeta = np.random.uniform()
+        return zeta
+
+
+    def serial_simulate(self, nsims=1, quiet=False, verbose=False):
+        import pandas as pd
+        npops = self.paramsdict["npops"]
+
+        jmsfs_list = []
+
+        printstr = " Performing Simulations    | {} |"
+        start = time.time()
+        for i in range(nsims):
+            try:
+                elapsed = datetime.timedelta(seconds=int(time.time()-start))
+                if not quiet: progressbar(nsims, i, printstr.format(elapsed))
+
+                zeta = self._sample_zeta()
+                # Get effective # of coexpanding taxa
+                zeta_e = int(np.ceil(zeta * self.paramsdict["npops"]))
+                psi, pops_per_tau = self.get_pops_per_tau(n_sync=zeta_e)
+
+                LOGGER.debug("sim {} - zeta {} - zeta_e {} - pops_per_tau {}".format(i, zeta, zeta_e, pops_per_tau))
+                # All taus, epsilons, and N_es will be the length of npops
+                # taus here will be in generations not years
+                #taus = self._sample_tau(pops_per_tau)
+                #epsilons = self._sample_epsilon(pops_per_tau)
+                N_es = self._sample_Ne(self.paramsdict["npops"])
+                num_replicates = self._check_numreplicates()
+                sfs_list = []
+                idx = 0
+                for tidx, tau_pops in enumerate(pops_per_tau):
+                    for pidx in range(tau_pops):
+                        sfs_list.append(self._simulate(t_recent_change=80,
+                                                t_historic_samp=110,
+                                                t_ancestral_change=15000,
+                                                ne_ancestral=100000,
+                                                r_modern=-0.1,
+                                                r_ancestral=0,
+                                                ))
+                    idx += 1
+                jmsfs = JointMultiSFS(sfs_list,\
+                                sort=self._hackersonly["sorted_sfs"],\
+                                proportions=self._hackersonly["proportional_msfs"])
+
+                if self._hackersonly["scale_tau_to_coaltime"]:
+                    ## Scale time to coalescent units
+                    ## Here taus in generations already, so scale to coalescent units
+                    ## assuming diploid so 2 * 2Ne
+                    taus = taus/(4*self._Ne_ave)
+
+                ## In the pipe_master model the first tau in the list is the co-expansion time
+                ## If/when you get around to doing the msbayes model of multiple coexpansion
+                ## pulses, then this will have to change 
+                jmsfs.set_params(pd.Series([zeta, zeta_e, 0, N_es],\
+                                        index=["zeta", "zeta_e", "r_moderns", "Ne_anc"]))
+                jmsfs_list.append(jmsfs)
+
+            except KeyboardInterrupt as inst:
+                print("\n    Cancelling remaining simulations")
+                break
+            except Exception as inst:
+                LOGGER.debug("Simulation failed: {}".format(inst))
+                raise PTAError("Failed inside serial_simulate: {}".format(inst))
+
+        if not quiet: progressbar(100, 100, " Finished {} simulations in   {}\n".format(i+1, elapsed))
+
+        return jmsfs_list
+
+    
+    def _simulate(self,
+                    t_recent_change=80,
+                    t_historic_samp=110,
+                    t_ancestral_change=15000,
+                    ne_ancestral=100000,
+                    r_modern=-0.1,
+                    r_ancestral=0,
+                    debug=False,
+                    verbose=False):
+
+        n_albatross = self.paramsdict["nsamps"][0]
+        n_contemp = self.paramsdict["nsamps"][1]
+        gentime = self.paramsdict["generation_time"]
+        mu = self.paramsdict["muts_per_gen"]
+
+        ne_historic=ne_ancestral/np.exp(-(r_ancestral)*((t_ancestral_change-t_historic_samp)/gentime))
+        ne_contemp=ne_historic/np.exp(-(r_modern)*(t_recent_change/gentime))
+
+        dem=msprime.Demography()
+        dem.add_population(name="C",initial_size=ne_contemp)
+        dem.add_population_parameters_change(time=0, growth_rate=r_modern)
+        dem.add_population_parameters_change(time=(t_recent_change/gentime), growth_rate=0)
+        dem.add_population_parameters_change(time=(t_historic_samp/gentime), growth_rate=r_ancestral)
+        dem.add_population_parameters_change(time=(t_ancestral_change/gentime), growth_rate=0)
+
+        if debug:
+            history = msprime.DemographyDebugger(demography=dem)
+            print(history)
+
+        ## TODO: This doesn't handle different # of loci per population
+        n_loci = self.paramsdict["num_replicates"]
+        if isinstance(n_loci, list):
+            n_loci = n_loci[0]
+        length = self.paramsdict["length"]
+
+        n_sites = n_loci * length-1
+        rateseq = [0,0.5] * n_loci
+        unlinkedloci_rates = rateseq[:-1]
+        loci_startpoints = [x*length for x in list(range(n_loci))]
+        loci_endpoints = [(x+1)*length-1 for x in list(range(n_loci))]
+        loci_boundaries = sorted(loci_startpoints + loci_endpoints)
+        rate_map = msprime.RateMap(position=loci_boundaries, rate=unlinkedloci_rates)
+
+        albatross_sampset = msprime.SampleSet(n_albatross, time=round(t_historic_samp/gentime))
+        contemporary_sampset = msprime.SampleSet(n_contemp)
+        ts = msprime.sim_ancestry(
+            samples=[contemporary_sampset,albatross_sampset],
+            demography=dem,
+            recombination_rate=rate_map,
+            sequence_length=n_sites
+        )
+        mts=msprime.sim_mutations(ts, rate=mu)
+
+        contemp_list=list(range(n_contemp*2))
+        albatross_list=[x+n_contemp*2 for x in list(range(n_albatross*2))]
+        jsfs = mts.allele_frequency_spectrum(sample_sets=[albatross_list, contemp_list],
+                                             mode="site",
+                                             span_normalise=False)
+
+        return jsfs
+
+
+    def load_simulations(self, nrows=50):
+        """
+        Load in the simulation data, if it exists.
+        """
+        simfile = os.path.join(self.paramsdict["project_dir"], "{}-SIMOUT.csv".format(self.name))
+        if not os.path.exists(simfile):
+            raise PTAError("No simulations exist for {}".format(self.name))
+
+        dat = pd.read_csv(simfile, sep=" ")
+
+        # Split the params and jsfs data
+        # The dataframe is formated so that the first bin of the jMSFS is 0
+        idx = dat.columns.get_loc('0')
+        params = dat.iloc[:nrows, :idx]
+        jmsfs = dat.iloc[:nrows, idx:]
+        nrows = min(len(jmsfs), nrows)
+        jmsfs = jmsfs.values.reshape(nrows,
+                            self.paramsdict["npops"],
+                            self.paramsdict["nsamps"][0]*2+1,
+                            self.paramsdict["nsamps"][1]*2+1)
+        return params, jmsfs

@@ -25,6 +25,7 @@ with warnings.catch_warnings(record=True) as w:
     matplotlib.use("agg")
 
 from .demography import DemographicModel
+from .demography_2d import DemographicModel_2D_Temporal
 from . import util
 
 ## sklearn throws a DeprecationWarning: sklearn.externals.joblib

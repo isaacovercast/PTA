@@ -119,7 +119,7 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
                                 r_modern=self.paramsdict["r_modern"],
                                 r_ancestral=self.paramsdict["r_ancestral"],
                                 ))
-                    idx += 1
+                        idx += 1
                 jmsfs = JointMultiSFS(sfs_list,\
                                 sort=self._hackersonly["sorted_sfs"],\
                                 proportions=self._hackersonly["proportional_msfs"])
@@ -235,3 +235,23 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
                             self.paramsdict["nsamps"][0]*2+1,
                             self.paramsdict["nsamps"][1]*2+1)
         return params, jmsfs
+
+
+    def plot_sims_PCA(self, color_by="Ne_s_mean"):
+        import matplotlib.pyplot as plt
+        from sklearn.decomposition import PCA
+        from sklearn.preprocessing import PowerTransformer
+
+        fig, ax = plt.subplots(figsize=(7, 5))
+
+        params, jmsfs = self.load_simulations()
+
+        dat = PowerTransformer(method='yeo-johnson').fit_transform(\
+                                        jmsfs.reshape(*jmsfs.shape[:-3], -1))
+
+        pca = PCA(n_components=2)
+        pcs = pca.fit_transform(dat)
+
+        g = ax.scatter(pcs[:, 0], pcs[:, 1], c=params[color_by])
+        cbar = fig.colorbar(g)
+        return ax

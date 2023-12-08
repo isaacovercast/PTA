@@ -33,6 +33,33 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
     ])
 
 
+    def _paramschecker(self, param, newvalue, quiet=True):
+        """
+        Check and set parameters. Raises exceptions when params are set to
+        values they should not be.
+
+        :param string param: The parameter to set.
+        :param newvalue: The value of the parameter.
+        :param bool quiet: Whether to print info.
+        """
+        super()._paramschecker(param, newvalue, quiet)
+
+        ## TODO: This should actually check the values and make sure they make sense
+        try:
+            if param in ["ne_ancestral"]:
+                dtype = int
+                tup = tuplecheck(newvalue, dtype=dtype)
+                if isinstance(tup, tuple):
+                    self.paramsdict[param] = tup
+                    if tup[0] <= 0:
+                        raise PTAError("{} values must be strictly > 0. You put {}".format(param, tup))
+                else:
+                    self.paramsdict[param] = tup
+        except:
+            ## Do something intelligent here?
+            raise
+
+
     def _sample_Ne(self, nsamps=1):
         N_e = self.paramsdict["ne_ancestral"]
         if isinstance(N_e, tuple):
@@ -84,13 +111,14 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
                 idx = 0
                 for tidx, tau_pops in enumerate(pops_per_tau):
                     for pidx in range(tau_pops):
-                        sfs_list.append(self._simulate(t_recent_change=80,
-                                                t_historic_samp=110,
-                                                t_ancestral_change=15000,
-                                                ne_ancestral=100000,
-                                                r_modern=-0.1,
-                                                r_ancestral=0,
-                                                ))
+                        sfs_list.append(self._simulate(
+                                t_recent_change=self.paramsdict["t_recent_change"],
+                                t_historic_samp=self.paramsdict["t_historic_samp"],
+                                t_ancestral_change=self.paramsdict["t_ancestral_change"],
+                                ne_ancestral=N_es[idx],
+                                r_modern=self.paramsdict["r_modern"],
+                                r_ancestral=self.paramsdict["r_ancestral"],
+                                ))
                     idx += 1
                 jmsfs = JointMultiSFS(sfs_list,\
                                 sort=self._hackersonly["sorted_sfs"],\
@@ -183,7 +211,7 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
         return jsfs
 
 
-    def load_simulations(self, nrows=50):
+    def load_simulations(self, nrows=None):
         """
         Load in the simulation data, if it exists.
         """
@@ -192,6 +220,9 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
             raise PTAError("No simulations exist for {}".format(self.name))
 
         dat = pd.read_csv(simfile, sep=" ")
+
+        if nrows == None:
+            nrows = len(dat)
 
         # Split the params and jsfs data
         # The dataframe is formated so that the first bin of the jMSFS is 0

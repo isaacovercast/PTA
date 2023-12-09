@@ -62,6 +62,8 @@ class JointMultiSFS(object):
         if sort:
             self.jMSFS = np.sort(self.jMSFS, axis=0)[::-1]
 
+        self.shape = self.jMSFS.shape
+
 
     def _get_jsfs_shape(self, sfs_file):
         try:
@@ -84,6 +86,16 @@ class JointMultiSFS(object):
 
     def to_string(self):
         return np.round(self.jMSFS, decimals=4)
+
+
+    def to_dataframe(self):
+        jmsfs_dat = pd.DataFrame(self.jMSFS.flatten()).T
+
+        if not self.stats.empty:
+            ## empirical data won't have stats, so don't write it
+            jmsfs_dat = self.stats.merge(jmsfs_dat, how="cross")
+
+        return jmsfs_dat
 
 
     def dump(self, outdir="", outfile="", full=False):
@@ -126,10 +138,9 @@ class JointMultiSFS(object):
         return msfs
 
 
-    ## What's coming in is pd.Series([zeta, zeta_e, psi, pops_per_tau, taus, epsilons, N_es]
+    ## What's coming in is pd.Series([zeta, zeta_e, r_moderns, Ne_anc]
     ## zeta_e is 'effective zeta', the # of populations co-expanding
     def set_params(self, params):
-        raise Exception("JointMultiSFS.set_params not implemented")
         self._full_params = params
 
         ## Convenience apparatus to make calculating the moments easier
@@ -138,24 +149,15 @@ class JointMultiSFS(object):
                             [np.mean, np.std, skew, kurtosis, np.median, iqr]):
             moments[name] = func
 
+        # zeta and zeta_e are fixed for a simulation
         stat_dict = OrderedDict({"zeta":params["zeta"],\
                                 "zeta_e":params["zeta_e"],\
-                                "psi":params["psi"],\
-                                "t_s":params["t_s"]})
-
-        ## Handle taus with no variance and set omega to 0
-        if not params["taus"].var():
-            omega = 0
-        else:
-            omega = params["taus"].var()/params["taus"].mean()
-        stat_dict["omega"] = omega
+                                })
 
         ## For each list of values, rip through and calculate stats
-        for label, dat in zip(["pops_per_tau", "taus", "epsilons", "Ne_s"],
-                                [self._full_params.pops_per_tau,\
-                                    self._full_params.taus,\
-                                    self._full_params.epsilons,\
-                                    self._full_params.N_es]):
+        for label, dat in zip(["r_moderns", "Ne_s"],
+                                [self._full_params.r_moderns,\
+                                 self._full_params.Ne_anc]):
 
             ## I'm going to just mask out the pops_per_tau stats for now
             ## as for the initial stage of development we'll focus on the
@@ -174,7 +176,7 @@ class JointMultiSFS(object):
 
     def plot_2d_sfs(self, sfs_idx=None, vmin=None, vmax=None, ax=None, 
                            pop_ids=None, extend='neither', colorbar=True,
-                           plot_residuals=False, cmap=matplotlib.pyplot.cm.viridis):
+                           plot_residuals=False, cmap=matplotlib.pyplot.cm.viridis_r):
         """
         Heatmap of single 2d SFS. Extensively borrowed from DADI package plotting
         functions.

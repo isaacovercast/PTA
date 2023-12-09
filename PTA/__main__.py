@@ -25,20 +25,28 @@ def parse_params(args):
     except IOError as _:
         sys.exit("  No params file found")
 
+    # Figure out what kind of demographic model we're using by parsing
+    # the header of the params file. Defaults to 1D, for backwards
+    # compatibility
+    if "2D_Temporal" in plines.split("\n")[0]:
+        demog = PTA.DemographicModel_2D_Temporal
+    else:
+        demog = PTA.DemographicModel
+
     ## The [1:] thing just drops the first result from split which is '' anyway.
     plines = plines.split("------- ")[1:]
 
     ## Get params and make into a dict, ignore all blank lines
     items = [i.split("##")[0].strip() for i in plines[0].split("\n")[1:] if not i.strip() == ""]
-    keys = list(PTA.DemographicModel('null', quiet=True).paramsdict.keys())
+    keys = list(demog('null', quiet=True).paramsdict.keys())
     params = {str(i):j for i, j in zip(keys, items)}
 
     LOGGER.debug("Got params - {}".format(params))
 
-    return params
+    return params, demog
 
 
-def getmodel(args, params):
+def getmodel(args, params, model):
     """ 
     loads simulation or creates a new one and set its params as
     read in from the params file. Does not launch ipcluster. 
@@ -52,7 +60,7 @@ def getmodel(args, params):
     if not os.path.exists(project_dir):
         os.mkdir(project_dir)
 
-    data = PTA.DemographicModel(sim_name, quiet=args.quiet, verbose=args.verbose)
+    data = model(sim_name, quiet=args.quiet, verbose=args.verbose)
 
     ## Populate the parameters
     for param in params:
@@ -93,6 +101,10 @@ def parse_command_line():
     parser.add_argument("-c", metavar="cores", dest="cores",
         type=int, default=-1,
         help="number of CPU cores to use (Default=0=All)")
+
+    parser.add_argument("-m", metavar="model_type", dest="model_type",
+        type=str, default="1D",
+        help="Type of demographic model. Either 1D (default) or 2D_Temporal")
 
     parser.add_argument('-e', metavar='empirical', dest="empirical", type=str, 
         default=None, 
@@ -248,7 +260,13 @@ def main():
     if args.new:
         ## Create a tmp assembly, call write_params to make default params.txt
         try:
-            tmpassembly = PTA.DemographicModel(args.new, quiet=True)
+            if "1D" in args.model_type:
+                tmpassembly = PTA.DemographicModel(args.new, quiet=True)
+            elif "2D_Temporal" in args.model_type:
+                tmpassembly = PTA.DemographicModel_2D_Temporal(args.new, quiet=True)
+            else:
+                ## Unrecognized model type
+                raise PTAException(BAD_MODEL_TYPE_ERROR.format(model_type))
             tmpassembly.write_params("params-{}.txt".format(args.new), outdir="./", 
                                      force=args.force)
         except Exception as inst:
@@ -259,9 +277,13 @@ def main():
                format(args.new, os.path.realpath(os.path.curdir)))
         sys.exit(2)
 
-
-    ## if params then must provide action argument with it
+    ## Some basic checking of input parameters
     if args.params:
+        ## The -m parameter is only used with -n
+        if args.model_type:
+            print(NO_M_WITH_P_ERROR)
+            sys.exit(2)
+        ## if params then must provide action argument with it
         if not any([args.sims]):
             print(PTA_USAGE)
             sys.exit(2)
@@ -281,11 +303,11 @@ def main():
 
     ## create new simulation model
     if args.params:
-        params = parse_params(args)
+        params, model = parse_params(args)
         LOGGER.debug("params - {}".format(params))
 
         ## launch or load simulationwith custom profile/pid
-        data = getmodel(args, params)
+        data = getmodel(args, params, model)
 
         ## Validate, format, and import empirical data
         if args.empirical:
@@ -313,6 +335,21 @@ BAD_PARAMETER_ERROR = """
     Malformed params file: {}
     Bad parameter {} - {}
     {}"""
+
+
+BAD_MODEL_TYPE_ERROR = """
+    Model type argument (-t) must be one of:
+        1D
+        2D_Temporal
+
+    You put: {}
+"""
+
+NO_M_WITH_P_ERROR = """
+    Specifying -m with -p <params> has no effect, as -m parameter is only used
+    upon creation of a new params file (-n). If you wish to specify a different
+    model you must create a new params file using both -n and -m.
+"""
 
 PTA_HEADER = \
 "\n -------------------------------------------------------------"+\

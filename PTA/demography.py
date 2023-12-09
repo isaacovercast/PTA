@@ -663,7 +663,7 @@ class DemographicModel(object):
                                                 tau=taus[idx],
                                                 epsilon=epsilons[idx],
                                                 num_replicates=num_replicates[idx]))
-                    idx += 1
+                        idx += 1
                 msfs = multiSFS(sfs_list,\
                                 sort=self._hackersonly["sorted_sfs"],\
                                 proportions=self._hackersonly["proportional_msfs"])

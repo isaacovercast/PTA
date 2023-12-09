@@ -915,7 +915,7 @@ class DemographicModel(object):
 
 
 
-    def load_simulations(self, nrows=50):
+    def load_simulations(self, nrows=None):
         """
         Load in the simulation data, if it exists.
         """
@@ -925,17 +925,37 @@ class DemographicModel(object):
 
         dat = pd.read_csv(simfile, sep=" ")
 
+        if nrows == None:
+            nrows = len(dat)
+
         # Split the params and jsfs data
-        # The dataframe is formated so that the first bin of the jMSFS is 0
-        idx = dat.columns.get_loc('0')
-        params = dat.iloc[:nrows, :idx]
-        jmsfs = dat.iloc[:nrows, idx:]
-        nrows = min(len(jmsfs), nrows)
-        jmsfs = jmsfs.values.reshape(nrows,
-                            self.paramsdict["npops"],
-                            self.paramsdict["nsamps"][0]*2+1,
-                            self.paramsdict["nsamps"][1]*2+1)
-        return params, jmsfs
+        # Get all the columns with 'pop' in the column title, only sfs bins
+        pidxs = [x for x in dat.columns if 'pop' not in x]
+        sidxs = [x for x in dat.columns if 'pop' in x]
+
+        params = dat[pidxs]
+        msfs = dat[sidxs]
+
+        return params.iloc[:nrows, :], msfs.iloc[:nrows, :]
+
+
+    def plot_sims_PCA(self, color_by="zeta"):
+        import matplotlib.pyplot as plt
+        from sklearn.decomposition import PCA
+        from sklearn.preprocessing import PowerTransformer
+
+        fig, ax = plt.subplots(figsize=(7, 5))
+
+        params, msfs = self.load_simulations()
+
+        dat = PowerTransformer(method='yeo-johnson').fit_transform(msfs)
+
+        pca = PCA(n_components=2)
+        pcs = pca.fit_transform(dat)
+
+        g = ax.scatter(pcs[:, 0], pcs[:, 1], c=params[color_by])
+        cbar = fig.colorbar(g)
+        return ax
 
 
     def _write_simout(self, msfs_list, force=False):

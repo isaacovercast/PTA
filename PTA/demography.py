@@ -73,13 +73,6 @@ class DemographicModel(object):
                        ("generation_time", 1),
                        ("recoms_per_gen", 1e-9),
                        ("muts_per_gen", 1e-8),
-                       # 2D SFS parameters
-#                       ("t_recent_change", 80),
-#                       ("t_historic_samp", 110),
-#                       ("t_ancestral_change", 15000),
-#                       ("ne_ancestral", 100000),
-#                       ("r_modern", -0.1),
-#                       ("r_ancestral", 0),
         ])
 
         ## Separator to use for reading/writing files
@@ -109,7 +102,7 @@ class DemographicModel(object):
                        ("allow_psi>1", False), 
                        ("proportional_msfs", False),
                        ("mu_variance", 0),
-                       ("Ne_loguniform", True),
+                       ("Ne_loguniform", False),
                        ("scale_tau_to_coaltime", False),
                        ("tau_buffer", 0),
                        ("sfs_dim", 1),

@@ -6,11 +6,12 @@ Whole genome or SNP based comparative phylogeographic analysis for co-distribute
 assemblages of communities. The result of aggregating a bunch of momis and dadis.
 
 ## Quick installation
+**PTA requires python 3.9 at the moment.**
 
 * Install [miniconda](https://conda.io/miniconda.html) and activate conda
 * Install PTA inside a clean conda environment:
 ```
-conda create -n pta python=3.10
+conda create -n pta python=3.9
 conda activate pta
 conda install -c conda-forge -c bioconda -c PTA pta
 ```

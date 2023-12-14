@@ -269,7 +269,7 @@ def main():
                 tmpassembly = PTA.DemographicModel_2D_Temporal(args.new, quiet=True)
             else:
                 ## Unrecognized model type
-                raise PTAError(BAD_MODEL_TYPE_ERROR.format(model_type))
+                raise PTAError(BAD_MODEL_TYPE_ERROR.format(args.model_type))
             tmpassembly.write_params("params-{}.txt".format(args.new), outdir="./", 
                                      force=args.force)
         except Exception as inst:

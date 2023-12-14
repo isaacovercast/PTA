@@ -103,7 +103,7 @@ def parse_command_line():
         help="number of CPU cores to use (Default=0=All)")
 
     parser.add_argument("-m", metavar="model_type", dest="model_type",
-        type=str, default="1D",
+        type=str, default=None,
         help="Type of demographic model. Either 1D (default) or 2D_Temporal")
 
     parser.add_argument('-e', metavar='empirical', dest="empirical", type=str, 
@@ -260,6 +260,9 @@ def main():
     if args.new:
         ## Create a tmp assembly, call write_params to make default params.txt
         try:
+            ## If no model_type assume 1D
+            if not args.model_type:
+                args.model_type = "1D"
             if "1D" in args.model_type:
                 tmpassembly = PTA.DemographicModel(args.new, quiet=True)
             elif "2D_Temporal" in args.model_type:

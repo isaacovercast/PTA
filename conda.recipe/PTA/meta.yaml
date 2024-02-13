@@ -1,6 +1,6 @@
 package:
   name: pta
-  version: "0.0.11"
+  version: "0.0.12"
 
 source:
   git_url: https://github.com/isaacovercast/PTA
@@ -21,7 +21,7 @@ requirements:
     - python
     - setuptools
     - ipyparallel
-    - scipy
+    - scipy>=1.9
     - nbconvert
     - joblib
     - jupyter

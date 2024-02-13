@@ -29,6 +29,7 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
                ("t_ancestral_change", 15000),
                ("ne_ancestral", 100000),
                ("r_modern", -0.1),
+               ("r_modern_sigma", 0),
                ("r_ancestral", 0),
     ])
 
@@ -55,8 +56,11 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
                         raise PTAError("{} values must be strictly > 0. You put {}".format(param, tup))
                 else:
                     self.paramsdict[param] = tup
-            elif param in ["r_modern"]:
+            elif param in ["r_modern", "r_modern_sigma"]:
                 dtype = float
+                tup = tuplecheck(newvalue, dtype=dtype)
+                if isinstance(tup, tuple):
+                    self.paramsdict[param] = tup
                 self.paramsdict[param] = newvalue
         except:
             ## Do something intelligent here?
@@ -85,6 +89,25 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
         return zeta
 
 
+    def _sample_r_modern(self):
+        """
+        If r_modern_sigma is 0, then all species get identical r_modern, otherwise
+        sample from a normal distribution centered on r_modern_mu
+        """
+        r_modern_mu = self.paramsdict["r_modern"]
+        if isinstance(r_modern_mu, list):
+            # Sample the r_modern_mu uniformly if the r_modern param is a tuple
+            # otherwise r_modern_mu is fixed
+            r_modern_mu = np.random.uniform(r_modern_mu[0], r_modern_mu[1])
+
+        r_modern_sigma = self.paramsdict["r_modern_sigma"]
+        if isinstance(r_modern_sigma, list):
+            r_modern_sigma = np.random.uniform(r_modern_sigma[0], r_modern_sigma[1])
+
+        #import pdb; pdb.set_trace()
+        return r_modern_mu, r_modern_sigma, np.random.normal(r_modern_mu, r_modern_sigma, self.paramsdict["npops"])
+
+
     def serial_simulate(self, nsims=1, quiet=False, verbose=False):
         import pandas as pd
         npops = self.paramsdict["npops"]
@@ -111,6 +134,10 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
                 N_es = self._sample_Ne(self.paramsdict["npops"])
                 num_replicates = self._check_numreplicates()
                 gentimes = self._check_gentimes()
+
+                # Sample r_modern per species
+                r_mu, r_sig, r_moderns = self._sample_r_modern()
+
                 sfs_list = []
                 idx = 0
                 for tidx, tau_pops in enumerate(pops_per_tau):
@@ -121,7 +148,7 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
                                 t_historic_samp=self.paramsdict["t_historic_samp"],
                                 t_ancestral_change=self.paramsdict["t_ancestral_change"],
                                 ne_ancestral=N_es[idx],
-                                r_modern=self.paramsdict["r_modern"],
+                                r_modern=r_moderns[idx],
                                 r_ancestral=self.paramsdict["r_ancestral"],
                                 ))
                         idx += 1
@@ -138,8 +165,8 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
                 ## In the pipe_master model the first tau in the list is the co-expansion time
                 ## If/when you get around to doing the msbayes model of multiple coexpansion
                 ## pulses, then this will have to change 
-                jmsfs.set_params(pd.Series([zeta, zeta_e, self.paramsdict["r_modern"], N_es],\
-                                        index=["zeta", "zeta_e", "r_moderns", "Ne_anc"]))
+                jmsfs.set_params(pd.Series([zeta, zeta_e, r_mu, r_sig, r_moderns, N_es],\
+                                        index=["zeta", "zeta_e", "r_modern_mu", "r_modern_sigma", "r_moderns", "Ne_anc"]))
                 jmsfs_list.append(jmsfs)
 
             except KeyboardInterrupt as inst:

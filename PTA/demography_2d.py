@@ -110,11 +110,13 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
                 #epsilons = self._sample_epsilon(pops_per_tau)
                 N_es = self._sample_Ne(self.paramsdict["npops"])
                 num_replicates = self._check_numreplicates()
+                gentimes = self._check_gentimes()
                 sfs_list = []
                 idx = 0
                 for tidx, tau_pops in enumerate(pops_per_tau):
                     for pidx in range(tau_pops):
                         sfs_list.append(self._simulate(
+                                gentime=gentimes[idx],
                                 t_recent_change=self.paramsdict["t_recent_change"],
                                 t_historic_samp=self.paramsdict["t_historic_samp"],
                                 t_ancestral_change=self.paramsdict["t_ancestral_change"],
@@ -153,6 +155,7 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
 
     
     def _simulate(self,
+                    gentime=1,
                     t_recent_change=80,
                     t_historic_samp=110,
                     t_ancestral_change=15000,
@@ -164,7 +167,6 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
 
         n_albatross = self.paramsdict["nsamps"][0]
         n_contemp = self.paramsdict["nsamps"][1]
-        gentime = self.paramsdict["generation_time"]
         mu = self.paramsdict["muts_per_gen"]
 
         ne_historic=ne_ancestral/np.exp(-(r_ancestral)*((t_ancestral_change-t_historic_samp)/gentime))

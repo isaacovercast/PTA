@@ -522,6 +522,22 @@ class DemographicModel(object):
         return num_replicates
 
 
+    def _check_gentimes(self):
+        """
+        Ensure generation_time is the correct length.
+        """
+        gentimes = self.paramsdict["generation_time"]
+        if isinstance(gentimes, list):
+            if not len(gentimes) == self.paramsdict["npops"]:
+                raise PTAError(BAD_GENTIMES.format(len(gentimes),\
+                                                         self.paramsdict["npops"]))
+        elif isinstance(gentimes, float) or isinstance(gentimes, int):
+            gentimes = [gentimes] * self.paramsdict["npops"]
+        else:
+            raise PTAError("generation_time param must be float or list: {}".format(gentimes))
+        return gentimes 
+
+
     def _sample_mu(self):
         """
         Sample mu from a zero-truncated normal distribution, if mu_var is
@@ -1047,6 +1063,15 @@ BAD_NUM_REPLICATES = """
     must be a list of integer values that is of length `npops`.
 
     len(num_replicates) = {}
+    npops =               {}
+    """
+
+BAD_GENTIMES = """
+    `generation_time` parameter must be either a single float value, which
+    will be interpreted as all populations having this generation time, or it
+    must be a list of float values that is of length `npops`.
+
+    len(generation_time) = {}
     npops =               {}
     """
 

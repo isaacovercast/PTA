@@ -535,7 +535,7 @@ class DemographicModel(object):
             gentimes = [gentimes] * self.paramsdict["npops"]
         else:
             raise PTAError("generation_time param must be float or list: {}".format(gentimes))
-        return gentimes 
+        return gentimes
 
 
     def _sample_mu(self):

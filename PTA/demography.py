@@ -106,6 +106,7 @@ class DemographicModel(object):
                        ("scale_tau_to_coaltime", False),
                        ("tau_buffer", 0),
                        ("sfs_dim", 1),
+                       ("fix_ts", 0),
         ])
 
         ## Ne_ave, the expected value of the Ne parameter given a unifrom prior
@@ -195,7 +196,7 @@ class DemographicModel(object):
                     # Calculate Ne_ave, the expected value of the uniform prior on Nes
                     self._Ne_ave = np.mean(tup)
 
-            elif param in ["num_replicates"]:
+            elif param in ["num_replicates", "generation_time"]:
                 ## num_replicates must be a list that is the same length
                 ## as the number of populations, and should contain the
                 ## numbers of observed loci for each sample in the data.
@@ -203,8 +204,12 @@ class DemographicModel(object):
                 ## the same num_replicates for all pops.
                 ## islist will properly handle setting with a list in API
                 ## mode and will do nothing in CLI mode.
-                newvalue = tuplecheck(newvalue, islist=True, dtype=int)
-                if isinstance(newvalue, int):
+                if param == "num_replicates":
+                    dtype = int
+                elif param == "generation_time":
+                    dtype = float
+                newvalue = tuplecheck(newvalue, islist=True, dtype=dtype)
+                if isinstance(newvalue, dtype):
                     newvalue = [newvalue] * self.paramsdict["npops"]
                 self.paramsdict[param] = newvalue
                 if not len(newvalue) == self.paramsdict["npops"]:
@@ -225,7 +230,7 @@ class DemographicModel(object):
             elif param in ["npops", "length"]:
                 self.paramsdict[param] = int(newvalue)
 
-            elif param in ["generation_time", "recoms_per_gen", "muts_per_gen", "zeta"]:
+            elif param in ["recoms_per_gen", "muts_per_gen", "zeta"]:
                 self.paramsdict[param] = float(newvalue)
 
             else:
@@ -449,6 +454,10 @@ class DemographicModel(object):
         else:
             # Tau invariable, so fix all times to the same value
             taus = np.array([tau] * self.paramsdict["npops"])
+
+        if self._hackersonly["fix_ts"]:
+            zeta_e = pops_per_tau[0]
+            taus = np.array([self._hackersonly["fix_ts"]] * zeta_e + taus[zeta_e:].tolist())
 
         # Scale years to generations
         taus = taus/self.paramsdict["generation_time"]

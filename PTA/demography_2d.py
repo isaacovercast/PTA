@@ -55,6 +55,9 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
                         raise PTAError("{} values must be strictly > 0. You put {}".format(param, tup))
                 else:
                     self.paramsdict[param] = tup
+            elif param in ["r_modern"]:
+                dtype = float
+                self.paramsdict[param] = newvalue
         except:
             ## Do something intelligent here?
             raise
@@ -133,7 +136,7 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
                 ## In the pipe_master model the first tau in the list is the co-expansion time
                 ## If/when you get around to doing the msbayes model of multiple coexpansion
                 ## pulses, then this will have to change 
-                jmsfs.set_params(pd.Series([zeta, zeta_e, 0, N_es],\
+                jmsfs.set_params(pd.Series([zeta, zeta_e, self.paramsdict["r_modern"], N_es],\
                                         index=["zeta", "zeta_e", "r_moderns", "Ne_anc"]))
                 jmsfs_list.append(jmsfs)
 

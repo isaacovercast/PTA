@@ -28,9 +28,10 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
                ("t_historic_samp", 110),
                ("t_ancestral_change", 15000),
                ("ne_ancestral", 100000),
-               ("r_modern", -0.1),
+               ("r_modern_mu", -0.1),
                ("r_modern_sigma", 0),
-               ("r_ancestral", 0),
+               ("r_ancestral_mu", 0),
+               ("r_ancestral_sigma", 0),
     ])
 
 
@@ -56,7 +57,7 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
                         raise PTAError("{} values must be strictly > 0. You put {}".format(param, tup))
                 else:
                     self.paramsdict[param] = tup
-            elif param in ["r_modern", "r_modern_sigma"]:
+            elif param in ["r_modern_mu", "r_modern_sigma"]:
                 dtype = float
                 tup = tuplecheck(newvalue, dtype=dtype)
                 if isinstance(tup, tuple):
@@ -89,23 +90,31 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
         return zeta
 
 
-    def _sample_r_modern(self):
+    def _sample_r(self, modern=True):
         """
         If r_modern_sigma is 0, then all species get identical r_modern, otherwise
         sample from a normal distribution centered on r_modern_mu
+
+        param modern (bool) : Whether to sample modern or ancestral r
         """
-        r_modern_mu = self.paramsdict["r_modern"]
-        if isinstance(r_modern_mu, list):
+        if modern:
+            r_mu = self.paramsdict["r_modern_mu"]
+            r_sigma = self.paramsdict["r_modern_sigma"]
+        else:
+            r_mu = self.paramsdict["r_ancestral_mu"]
+            r_sigma = self.paramsdict["r_ancestral_sigma"]
+
+        if isinstance(r_mu, list):
             # Sample the r_modern_mu uniformly if the r_modern param is a tuple
             # otherwise r_modern_mu is fixed
-            r_modern_mu = np.random.uniform(r_modern_mu[0], r_modern_mu[1])
+            r_mu = np.random.uniform(r_mu[0], r_mu[1])
 
-        r_modern_sigma = self.paramsdict["r_modern_sigma"]
-        if isinstance(r_modern_sigma, list):
-            r_modern_sigma = np.random.uniform(r_modern_sigma[0], r_modern_sigma[1])
+        if isinstance(r_sigma, list):
+            r_sigma = np.random.uniform(r_sigma[0], r_sigma[1])
 
-        #import pdb; pdb.set_trace()
-        return r_modern_mu, r_modern_sigma, np.random.normal(r_modern_mu, r_modern_sigma, self.paramsdict["npops"])
+        return r_mu, r_sigma, np.random.normal(r_mu,
+                                               r_sigma,
+                                               self.paramsdict["npops"])
 
 
     def serial_simulate(self, nsims=1, quiet=False, verbose=False):
@@ -136,7 +145,10 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
                 gentimes = self._check_gentimes()
 
                 # Sample r_modern per species
-                r_mu, r_sig, r_moderns = self._sample_r_modern()
+                r_mu, r_sig, r_moderns = self._sample_r(modern=True)
+                # Sample r_ancestrals, we are not estimating mu/sigma for
+                # ancestrals, so we don't need to keep them.
+                _, _, r_ancestrals = self._sample_r(modern=False)
 
                 sfs_list = []
                 idx = 0
@@ -149,7 +161,7 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
                                 t_ancestral_change=self.paramsdict["t_ancestral_change"],
                                 ne_ancestral=N_es[idx],
                                 r_modern=r_moderns[idx],
-                                r_ancestral=self.paramsdict["r_ancestral"],
+                                r_ancestral=r_ancestrals[idx],
                                 ))
                         idx += 1
                 jmsfs = JointMultiSFS(sfs_list,\

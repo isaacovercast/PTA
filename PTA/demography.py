@@ -1039,9 +1039,10 @@ PARAMS = {
     "t_historic_samp": "Time the historical sample was taken (years)",\
     "t_ancestral_change": "Time of ancestral size change (years)",\
     "ne_ancestral": "Ancestral Ne",\
-    "r_modern": "Growth rate between time 0 and t_recent_change",\
-    "r_modern_sigma": "Stdv if r_modern is sampled uniformly",\
-    "r_ancestral": "Growth rate between t_ancestral_change and t_recent_change",\
+    "r_modern_mu": "Mean growth rate between time 0 and t_recent_change",\
+    "r_modern_sigma": "Stdv for r_modern normal distribution",\
+    "r_ancestral_mu": "Mean growth rate between t_ancestral_change and t_recent_change",\
+    "r_ancestral_sigma": "Stdv for r_ancestral normal distribution",\
 }
 
 

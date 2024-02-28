@@ -22,6 +22,7 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
                ("length", 1000),
                ("num_replicates", 100),
                ("generation_time", 1),
+               ("body_size", 1),
                ("recoms_per_gen", 1e-9),
                ("muts_per_gen", 1e-8),
                ("t_recent_change", 80),
@@ -30,6 +31,7 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
                ("ne_ancestral", 100000),
                ("r_modern_mu", -0.1),
                ("r_modern_sigma", 0),
+               ("r_modern_alpha", 0),
                ("r_ancestral_mu", 0),
                ("r_ancestral_sigma", 0),
     ])
@@ -57,12 +59,22 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
                         raise PTAError("{} values must be strictly > 0. You put {}".format(param, tup))
                 else:
                     self.paramsdict[param] = tup
-            elif param in ["r_modern_mu", "r_modern_sigma"]:
+            elif param in ["r_modern_mu", "r_modern_sigma",\
+                            "r_ancestral_mu", "r_ancestral_sigma"]:
                 dtype = float
                 tup = tuplecheck(newvalue, dtype=dtype)
                 if isinstance(tup, tuple):
                     self.paramsdict[param] = tup
                 self.paramsdict[param] = newvalue
+            elif param == "body_size":
+                dtype = float
+                newvalue = tuplecheck(newvalue, islist=True, dtype=dtype)
+                if isinstance(newvalue, dtype):
+                    newvalue = [newvalue] * self.paramsdict["npops"]
+                self.paramsdict[param] = newvalue
+                if not len(newvalue) == self.paramsdict["npops"]:
+                    raise PTAError(BAD_BODY_SIZE.format(len(newvalue),\
+                                                             self.paramsdict["npops"]))
         except:
             ## Do something intelligent here?
             raise
@@ -112,9 +124,22 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
         if isinstance(r_sigma, list):
             r_sigma = np.random.uniform(r_sigma[0], r_sigma[1])
 
-        return r_mu, r_sigma, np.random.normal(r_mu,
-                                               r_sigma,
-                                               self.paramsdict["npops"])
+        r_alpha = self.paramsdict["r_modern_alpha"]
+        if isinstance(r_alpha, list):
+            r_alpha = np.random.uniform(r_alpha[0], r_alpha[1])
+        else:
+            r_alpha = np.array(r_alpha)
+
+        if modern:
+            # Modern growth rate can be modified by alpha and body size following:
+            # r_modern ~ N(r_modern_mu + r_modern_alpha * bodysize, r_modern_sigma)
+            loc = r_mu + np.array(r_alpha) * self.paramsdict["body_size"]
+        else:
+            loc = r_mu
+
+        return r_mu, r_sigma, r_alpha, np.random.normal(loc,
+                                                        r_sigma,
+                                                        self.paramsdict["npops"])
 
 
     def serial_simulate(self, nsims=1, quiet=False, verbose=False):
@@ -145,10 +170,10 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
                 gentimes = self._check_gentimes()
 
                 # Sample r_modern per species
-                r_mu, r_sig, r_moderns = self._sample_r(modern=True)
+                r_mu, r_sig, r_alph, r_moderns = self._sample_r(modern=True)
                 # Sample r_ancestrals, we are not estimating mu/sigma for
                 # ancestrals, so we don't need to keep them.
-                _, _, r_ancestrals = self._sample_r(modern=False)
+                _, _, _, r_ancestrals = self._sample_r(modern=False)
 
                 sfs_list = []
                 idx = 0
@@ -177,8 +202,9 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
                 ## In the pipe_master model the first tau in the list is the co-expansion time
                 ## If/when you get around to doing the msbayes model of multiple coexpansion
                 ## pulses, then this will have to change 
-                jmsfs.set_params(pd.Series([zeta, zeta_e, r_mu, r_sig, r_moderns, N_es],\
-                                        index=["zeta", "zeta_e", "r_modern_mu", "r_modern_sigma", "r_moderns", "Ne_anc"]))
+                jmsfs.set_params(pd.Series([zeta, zeta_e, r_mu, r_sig, r_alph, r_moderns, N_es],\
+                                        index=["zeta", "zeta_e", "r_modern_mu", "r_modern_sigma",\
+                                                "r_modern_alpha", "r_moderns", "Ne_anc"]))
                 jmsfs_list.append(jmsfs)
 
             except KeyboardInterrupt as inst:
@@ -299,3 +325,13 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
         g = ax.scatter(pcs[:, 0], pcs[:, 1], c=params[color_by])
         cbar = fig.colorbar(g)
         return ax
+
+
+BAD_BODY_SIZE = """
+    `body_size` parameter must be either a single integer value, which
+    will be interpreted as all populations having this body size, or it
+    must be a list of integer values that is of length `npops`.
+
+    len(body_size) =      {}
+    npops =               {}
+    """

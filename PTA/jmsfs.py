@@ -138,7 +138,8 @@ class JointMultiSFS(object):
         return msfs
 
 
-    ## What's coming in is pd.Series([zeta, zeta_e, r_modern_mu, r_modern_sigma, r_moderns, Ne_anc]
+    ## What's coming in is pd.Series([zeta, zeta_e, r_modern_mu, r_modern_sigma,
+    ##                                r_modern_alpha, r_moderns, Ne_anc]
     ## zeta_e is 'effective zeta', the # of populations co-expanding
     def set_params(self, params):
         self._full_params = params
@@ -154,6 +155,7 @@ class JointMultiSFS(object):
                                 "zeta_e":params["zeta_e"],
                                 "r_modern_mu":params["r_modern_mu"],
                                 "r_modern_sigma":params["r_modern_sigma"],
+                                "r_modern_alpha":params["r_modern_alpha"],
                                 })
 
         ## For each list of values, rip through and calculate stats

@@ -1033,15 +1033,17 @@ PARAMS = {
     "length" : "Length in bp of each independent genomic region to simulate",\
     "num_replicates" : "Number of genomic regions to simulate",\
     "generation_time" : "Generation time in years",\
+    "body_size" : "Body size per species (Modifies growth rate)",\
     "recoms_per_gen" : "Recombination rate within independent regions scaled per base per generation",\
     "muts_per_gen" : "Mutation rate scaled per base per generation",\
-    "t_recent_change": "Time of recent size change (years)",\
-    "t_historic_samp": "Time the historical sample was taken (years)",\
-    "t_ancestral_change": "Time of ancestral size change (years)",\
-    "ne_ancestral": "Ancestral Ne",\
-    "r_modern_mu": "Mean growth rate between time 0 and t_recent_change",\
-    "r_modern_sigma": "Stdv for r_modern normal distribution",\
-    "r_ancestral_mu": "Mean growth rate between t_ancestral_change and t_recent_change",\
+    "t_recent_change" : "Time of recent size change (years)",\
+    "t_historic_samp" : "Time the historical sample was taken (years)",\
+    "t_ancestral_change" : "Time of ancestral size change (years)",\
+    "ne_ancestral" : "Ancestral Ne",\
+    "r_modern_mu" : "Mean growth rate between time 0 and t_recent_change",\
+    "r_modern_sigma" : "Stdv for r_modern normal distribution",\
+    "r_modern_alpha" : "Growth rate modifier term, modulated by body size",\
+    "r_ancestral_mu" : "Mean growth rate between t_ancestral_change and t_recent_change",\
     "r_ancestral_sigma": "Stdv for r_ancestral normal distribution",\
 }
 

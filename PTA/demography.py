@@ -639,7 +639,9 @@ class DemographicModel(object):
                 LOGGER.error("Caught a failed simulation - {}".format(inst))
                 ## Don't let one bad apple spoin the bunch,
                 ## so keep trying through the rest of the asyncs
-        LOGGER.debug(faildict)
+        if (n_errors := len(faildict)) > 0:
+            print(f"\n    Caught {n_errors} errors during simulations. See pta_log.txt.")
+            LOGGER.error(faildict)
 
         return msfs_list
     

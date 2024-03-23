@@ -62,9 +62,9 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
             elif param in ["r_modern_mu", "r_modern_sigma",\
                             "r_ancestral_mu", "r_ancestral_sigma"]:
                 dtype = float
-                tup = tuplecheck(newvalue, dtype=dtype)
-                if isinstance(tup, tuple):
-                    self.paramsdict[param] = tup
+                newvalue = tuplecheck(newvalue, dtype=dtype)
+                if isinstance(newvalue, tuple):
+                    self.paramsdict[param] = newvalue
                 self.paramsdict[param] = newvalue
             elif param == "body_size":
                 dtype = float

@@ -1027,7 +1027,7 @@ PARAMS = {
     "simulation_name" : "The name of this simulation scenario",\
     "project_dir" : "Where to save files",\
     "npops" : "Number of populations undergoing co-demographic processes",\
-    "nsamps" : "Numbers of samples for each populations",\
+    "nsamps" : "Numbers of haploid samples for each population",\
     "N_e" : "Effective population size of the contemporary population",\
     "tau" : "Time of demographic change",\
     "epsilon" : "Magnitude of demographic change",\

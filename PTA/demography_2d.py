@@ -34,7 +34,11 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
                ("r_modern_alpha", 0),
                ("r_ancestral_mu", 0),
                ("r_ancestral_sigma", 0),
-    ])
+        ])
+
+        # Set proportional msfs as default
+        self._hackersonly["proportional_msfs"] = True
+
 
 
     def _paramschecker(self, param, newvalue, quiet=True):
@@ -272,11 +276,11 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
         )
         mts=msprime.sim_mutations(ts, rate=mu)
 
-        contemp_list=list(range(n_contemp*2))
-        albatross_list=[x+n_contemp*2 for x in list(range(n_albatross*2))]
+        contemp_list=list(range(n_contemp))
+        albatross_list=[x+n_contemp for x in list(range(n_albatross))]
         jsfs = mts.allele_frequency_spectrum(sample_sets=[albatross_list, contemp_list],
                                              mode="site",
-                                             span_normalise=False)
+                                             span_normalise=self._hackersonly["proportional_msfs"])
 
         return jsfs
 
@@ -302,8 +306,8 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
         nrows = min(len(jmsfs), nrows)
         jmsfs = jmsfs.values.reshape(nrows,
                             self.paramsdict["npops"],
-                            self.paramsdict["nsamps"][0]*2+1,
-                            self.paramsdict["nsamps"][1]*2+1)
+                            self.paramsdict["nsamps"][0]+1,
+                            self.paramsdict["nsamps"][1]+1)
         return params, jmsfs
 
 

@@ -55,7 +55,12 @@ class JointMultiSFS(object):
         ## Rescale sfs bins to proportions
         if proportions:
             for idx, _ in enumerate(self.jMSFS):
-                self.jMSFS[idx] = self.jMSFS[idx]/self.jMSFS[idx].sum()
+                ## Test for all empty sfs bins and set to 0 to avoid divide by
+                ## zero and a jMSFS full of nan
+                if self.jMSFS[idx].sum() == 0:
+                    self.jMSFS[idx] = np.zeros(self.jsfs_shape)
+                else:
+                    self.jMSFS[idx] = self.jMSFS[idx]/self.jMSFS[idx].sum()
 
         ## Calc proportions within sfs before sorting across sfs to better
         ## control for differences in # of snps for a given species pair

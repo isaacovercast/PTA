@@ -120,16 +120,16 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
             r_mu = self.paramsdict["r_ancestral_mu"]
             r_sigma = self.paramsdict["r_ancestral_sigma"]
 
-        if isinstance(r_mu, list):
+        if isinstance(r_mu, (list, tuple)):
             # Sample the r_modern_mu uniformly if the r_modern param is a tuple
             # otherwise r_modern_mu is fixed
             r_mu = np.random.uniform(r_mu[0], r_mu[1])
 
-        if isinstance(r_sigma, list):
+        if isinstance(r_sigma, (list, tuple)):
             r_sigma = np.random.uniform(r_sigma[0], r_sigma[1])
 
         r_alpha = self.paramsdict["r_modern_alpha"]
-        if isinstance(r_alpha, list):
+        if isinstance(r_alpha, (list, tuple)):
             r_alpha = np.random.uniform(r_alpha[0], r_alpha[1])
         else:
             r_alpha = np.array(r_alpha)

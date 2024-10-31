@@ -96,9 +96,11 @@ class JointMultiSFS(object):
     def to_dataframe(self):
         jmsfs_dat = pd.DataFrame(self.jMSFS.flatten()).T
 
-        if not self.stats.empty:
-            ## empirical data won't have stats, so don't write it
+        try:
             jmsfs_dat = self.stats.merge(jmsfs_dat, how="cross")
+        except:
+            ## empirical data won't have stats, so don't write it
+            pass
 
         return jmsfs_dat
 

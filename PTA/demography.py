@@ -803,7 +803,9 @@ class DemographicModel(object):
         msfs_df.columns = msfs_df.columns.map(str)
 
         dat = pd.concat([dat, msfs_df], sort=False)
-        dat.to_csv(simfile, header=True, index=False, sep=self._sep, float_format='%.3f')
+        # Writing float format truncated to 3 digits makes sfs bins not sum to one
+        #dat.to_csv(simfile, header=True, index=False, sep=self._sep, float_format='%.3f')
+        dat.to_csv(simfile, header=True, index=False, sep=self._sep)
 
 
 

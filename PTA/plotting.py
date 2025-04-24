@@ -179,12 +179,16 @@ def plot_simulations_pca(sims, ax='',\
                             verbose=verbose)
 
     ## Have to retain the targets because we drop them prior to PCA    
-    target_df = sim_df[default_targets]
-    sim_df = sim_df.drop(default_targets, axis=1)
+    #target_df = sim_df[default_targets]
+    #sim_df = sim_df.drop(default_targets, axis=1)
+    # This is a better way, split on the '0' column monomorphic sfs bin
+    idx = sim_df.columns.get_loc('0')
+    target_df = sim_df.iloc[:, :idx]
+    sim_df = sim_df.iloc[:, idx:]
 
     ## These are also left over from mess and not sure they are needed.
     # sim_df = StandardScaler().fit_transform(sim_df)
-    sim_df = PowerTransformer(method='yeo-johnson').fit_transform(sim_df)
+    # sim_df = PowerTransformer(method='yeo-johnson').fit_transform(sim_df)
 
     pca = PCA(n_components=2)
     dat = pca.fit_transform(sim_df)

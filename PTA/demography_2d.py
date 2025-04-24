@@ -228,7 +228,7 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
                     t_recent_change=80,
                     t_historic_samp=110,
                     t_ancestral_change=15000,
-                    ne_ancestral=100000,
+                    ne_ancestral=1000000,
                     r_modern=-0.1,
                     r_ancestral=0,
                     debug=False,
@@ -266,18 +266,20 @@ class DemographicModel_2D_Temporal(PTA.DemographicModel):
         loci_boundaries = sorted(loci_startpoints + loci_endpoints)
         rate_map = msprime.RateMap(position=loci_boundaries, rate=unlinkedloci_rates)
 
-        albatross_sampset = msprime.SampleSet(n_albatross, time=round(t_historic_samp/gentime))
+        t_samp = round(t_historic_samp/gentime)
+        albatross_sampset = msprime.SampleSet(n_albatross, time=t_samp)
         contemporary_sampset = msprime.SampleSet(n_contemp)
         ts = msprime.sim_ancestry(
             samples=[contemporary_sampset,albatross_sampset],
             demography=dem,
             recombination_rate=rate_map,
-            sequence_length=n_sites
+            sequence_length=n_sites,
+            ploidy=1,
         )
         mts=msprime.sim_mutations(ts, rate=mu)
 
-        contemp_list=list(range(n_contemp))
-        albatross_list=[x+n_contemp for x in list(range(n_albatross))]
+        contemp_list = mts.samples(time=0)
+        albatross_list = mts.samples(time=t_samp)
         jsfs = mts.allele_frequency_spectrum(sample_sets=[albatross_list, contemp_list],
                                              mode="site",
                                              span_normalise=self._hackersonly["proportional_msfs"])

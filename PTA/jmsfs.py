@@ -5,8 +5,9 @@ import numpy as np
 import os
 import pandas as pd
 import warnings
-from scipy.stats import entropy, kurtosis, iqr, skew
 from collections import OrderedDict
+from scipy.stats import entropy, kurtosis, iqr, skew
+from skbio.stats import composition as skb
 
 ## RuntimeWarning skew/kurtosis raise this for constant data and
 ## return 'nan', this is a change from scipy >= 1.9:
@@ -16,7 +17,7 @@ warnings.simplefilter('ignore', RuntimeWarning)
 np.set_printoptions(suppress=True)
 
 class JointMultiSFS(object):
-    def __init__(self, sfs_list, sort=False, proportions=False, mask_corners=True):
+    def __init__(self, sfs_list, sort=False, proportions=False, mask_corners=True, clr=False):
         '''
         sfs_list: A list of dadi sfs files containing 2D sfs
         '''
@@ -46,6 +47,14 @@ class JointMultiSFS(object):
 
             self.jMSFS = np.array(tmpjMSFS)
 
+        ## A mask to remove bins above the diagonal for folded jsfs
+        ## This will allow to remove zero-bins and also to mask
+        ## the jsfs for calculation of clr (if requested)
+        ## For 2d sfs, the diag to mask is a bit tricky to figure
+        ## but here it is
+        self._mask_diag = -int(round((self.jsfs_shape[0]-self.jsfs_shape[1])/2))+1
+        self.mask = np.triu(np.ones(self.jsfs_shape), self._mask_diag)[::-1, :].astype(bool)
+
         ## Mask monomorphic bins (ancestral/ derived in all)
         if mask_corners:
             for idx, _ in enumerate(self.jMSFS):
@@ -62,10 +71,21 @@ class JointMultiSFS(object):
                 else:
                     self.jMSFS[idx] = self.jMSFS[idx]/self.jMSFS[idx].sum()
 
+                    ## Center log ratio transform to make better use of the compositional
+                    ## nature of the proportions. We only do this if we are doing proportional
+                    ## sfs bins, and only if there is some data (skip sfs with 0 snps).
+                    if clr:
+
+                        tmp_jsfs = np.ma.array(self.jMSFS[idx], mask=self.mask)
+                        tmp_jsfs = skb.clr(tmp_jsfs+1e-5)
+                        # Put the zeros back
+                        self.jMSFS[idx] = tmp_jsfs.filled(0)
+
         ## Calc proportions within sfs before sorting across sfs to better
         ## control for differences in # of snps for a given species pair
         if sort:
             self.jMSFS = np.sort(self.jMSFS, axis=0)[::-1]
+
 
         self.shape = self.jMSFS.shape
 
@@ -76,7 +96,7 @@ class JointMultiSFS(object):
             samps = open(sfs_file).readlines()[0].split()[:2]
             jsfs_shape = (int(samps[0]), int(samps[1]))
         except:
-            raise Exception("Malformed sfs file, should be dadi format")
+            raise Exception(f"Malformed sfs file, should be dadi format: {sfs_file}")
         return jsfs_shape
 
 
@@ -203,7 +223,11 @@ class JointMultiSFS(object):
             sfs = self.jMSFS[sfs_idx]
 
         if plot_residuals:
-            sfs = np.tril(sfs) - np.triu(sfs).T
+            # This may only work for square matrices atm
+            u = np.tril(sfs) - np.triu(sfs).T
+            l = np.triu(sfs) - np.tril(sfs).T
+            sfs = u+l
+            cmap = matplotlib.pyplot.cm.Reds
 
         if ax is None:
             ax = matplotlib.pyplot.gca()

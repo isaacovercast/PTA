@@ -3,6 +3,12 @@
 Release Notes
 =============
 
+0.0.20
+------
+**May 21, 2025**
+
+- actually fix versioner
+
 0.0.19
 ------
 **May 21, 2025**

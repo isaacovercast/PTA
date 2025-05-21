@@ -3,6 +3,23 @@
 Release Notes
 =============
 
+0.0.19
+------
+**May 21, 2025**
+
+- fix versioner.py
+
+0.0.18
+------
+**May 21, 2025**
+
+-  "Updating PTA/__init__.py to version - 0.0.18
+- fix ploidy and increase default ne_ancestral
+- make the pca plotting work better
+- add a center log ratio flag to jmsfs init
+- Don't round sfs bin float values to 3 decimal places because it loses information
+- add project.toml so dev mode will work
+
 0.0.18
 ------
 **April 24, 2025**

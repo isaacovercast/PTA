@@ -74,8 +74,8 @@ for line in fileinput.input(initfile, inplace=1):
 # Update conda meta.yaml
 conda_file = "./conda.recipe/PTA/meta.yaml"
 for line in fileinput.input(conda_file, inplace=1):
-    if line.strip().startswith("  version"):
-        line = "  version = \""+version_git+"\""
+    if 'version' in line:
+        line = "  version: \""+version_git+"\""
     print(line.strip("\n"))
 
 

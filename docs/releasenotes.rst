@@ -20,10 +20,6 @@ Release Notes
 - Don't round sfs bin float values to 3 decimal places because it loses information
 - add project.toml so dev mode will work
 
-0.0.18
-------
-**April 24, 2025**
-
 0.0.17
 ------
 **October 31, 2024**

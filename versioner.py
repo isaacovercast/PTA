@@ -1,11 +1,9 @@
 #!/usr/bin/env python
-
-from __future__ import print_function
+import fileinput
 import re
+import subprocess
 import sys
 import time
-import fileinput
-import subprocess
 
 # Fetch version from git tags, and write to version.py.
 # Also, when git is not available (PyPi package), use stored version.py.
@@ -42,8 +40,9 @@ new_commits = subprocess.check_output(cmd.split())
 # commit tag
 print(new_commits)
 commit_lines = [x.split(b" ", 1) for x in new_commits.split(b"\n")]
+print(commit_lines)
 
-checkfor = "Merge branch 'master' of https://github.com/dereneaton/ipyrad"
+checkfor = "Merge branch 'master' of https://github.com/isaacovercast/PTA"
 # Write updates to releasenotes.rst
 for line in fileinput.input(release_file, inplace=1):
     if line.strip().startswith("=========="):
@@ -53,14 +52,15 @@ for line in fileinput.input(release_file, inplace=1):
         line += "**" + time.strftime("%B %d, %Y") + "**\n\n"
         for commit in commit_lines:
             try:
+                commit = commit[1].decode()
                 # Squash merge commits from the releasenotes cuz it annoying
                 # Also any cosmetic commits
-                if commit[1] == checkfor:
+                if commit == checkfor:
                     continue
-                if "cosmetic" in commit[1]:
+                if "cosmetic" in commit:
                     continue
-                line += "- " + commit[1] + "\n"
-            except:
+                line += "- " + commit + "\n"
+            except Exception as e:
                 pass
     print(line.strip("\n"))
 
@@ -71,10 +71,18 @@ for line in fileinput.input(initfile, inplace=1):
         line = "__version__ = \""+version_git+"\""
     print(line.strip("\n"))
 
+# Update conda meta.yaml
+conda_file = "./conda.recipe/PTA/meta.yaml"
+for line in fileinput.input(conda_file, inplace=1):
+    if line.strip().startswith("  version"):
+        line = "  version = \""+version_git+"\""
+    print(line.strip("\n"))
+
 
 try:
     subprocess.call(["git", "add", release_file])
     subprocess.call(["git", "add", initfile])
+    subprocess.call(["git", "add", conda_file])
     subprocess.call(["git", "commit", "-m \"Updating PTA/__init__.py to "+\
                     "version - {}".format(version_git)])
     subprocess.call(["git", "push"])
